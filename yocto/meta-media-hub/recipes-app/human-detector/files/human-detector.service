@@ -1,0 +1,14 @@
+# human-detector.service
+
+[Unit]
+Description=Human Detection Service
+After=network-online.target
+Wants=network-online.target
+
+Type=simple
+ExecStart=/usr/bin/python3 /usr/bin/human_detector.py
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

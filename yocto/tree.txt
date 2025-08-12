@@ -1,0 +1,847 @@
+/home/mgerken/montana_hub/yocto/poky/build/tmp/work/cortexa76-poky-linux/mediamtx/git/
+├── deploy-source-date-epoch
+│   └── __source_date_epoch.txt
+├── git
+│   ├── apidocs
+│   │   └── openapi.yaml
+│   ├── docker
+│   │   ├── ffmpeg.Dockerfile
+│   │   ├── ffmpeg-rpi.Dockerfile
+│   │   ├── rpi.Dockerfile
+│   │   └── standard.Dockerfile
+│   ├── go.mod
+│   ├── go.sum
+│   ├── internal
+│   │   ├── api
+│   │   │   ├── api.go
+│   │   │   ├── api_test.go
+│   │   │   ├── paginate.go
+│   │   │   ├── paginate_test.go
+│   │   │   └── testdata
+│   │   ├── auth
+│   │   │   ├── credentials.go
+│   │   │   ├── jwt_claims.go
+│   │   │   ├── manager.go
+│   │   │   ├── manager_test.go
+│   │   │   └── request.go
+│   │   ├── certloader
+│   │   │   ├── certloader.go
+│   │   │   └── certloader_test.go
+│   │   ├── conf
+│   │   │   ├── auth_action.go
+│   │   │   ├── auth_internal_users.go
+│   │   │   ├── auth_method.go
+│   │   │   ├── conf.go
+│   │   │   ├── conf_test.go
+│   │   │   ├── credential.go
+│   │   │   ├── credential_test.go
+│   │   │   ├── decrypt
+│   │   │   ├── duration.go
+│   │   │   ├── duration_test.go
+│   │   │   ├── encryption.go
+│   │   │   ├── env
+│   │   │   ├── global.go
+│   │   │   ├── hls_variant.go
+│   │   │   ├── ip_networks.go
+│   │   │   ├── jsonwrapper
+│   │   │   ├── log_destination.go
+│   │   │   ├── log_level.go
+│   │   │   ├── optional_global.go
+│   │   │   ├── optional_path.go
+│   │   │   ├── path.go
+│   │   │   ├── record_format.go
+│   │   │   ├── rtsp_auth_methods.go
+│   │   │   ├── rtsp_range_type.go
+│   │   │   ├── rtsp_transport.go
+│   │   │   ├── rtsp_transports.go
+│   │   │   ├── string_size.go
+│   │   │   ├── webrtc_ice_server.go
+│   │   │   └── yamlwrapper
+│   │   ├── confwatcher
+│   │   │   ├── confwatcher.go
+│   │   │   └── confwatcher_test.go
+│   │   ├── core
+│   │   │   ├── api_test.go
+│   │   │   ├── core.go
+│   │   │   ├── core_test.go
+│   │   │   ├── metrics_test.go
+│   │   │   ├── path.go
+│   │   │   ├── path_manager.go
+│   │   │   ├── path_manager_test.go
+│   │   │   ├── path_test.go
+│   │   │   ├── source_redirect.go
+│   │   │   ├── test_on_demand
+│   │   │   └── versiongetter
+│   │   ├── counterdumper
+│   │   │   ├── counterdumper.go
+│   │   │   └── counterdumper_test.go
+│   │   ├── defs
+│   │   │   ├── api.go
+│   │   │   ├── defs.go
+│   │   │   ├── path_access_request.go
+│   │   │   ├── path.go
+│   │   │   ├── publisher.go
+│   │   │   ├── reader.go
+│   │   │   ├── source.go
+│   │   │   └── static_source.go
+│   │   ├── externalcmd
+│   │   │   ├── cmd.go
+│   │   │   ├── cmd_unix.go
+│   │   │   ├── cmd_win.go
+│   │   │   └── pool.go
+│   │   ├── formatprocessor
+│   │   │   ├── ac3.go
+│   │   │   ├── av1.go
+│   │   │   ├── g711.go
+│   │   │   ├── g711_test.go
+│   │   │   ├── generic.go
+│   │   │   ├── generic_test.go
+│   │   │   ├── h264.go
+│   │   │   ├── h264_test.go
+│   │   │   ├── h265.go
+│   │   │   ├── h265_test.go
+│   │   │   ├── klv.go
+│   │   │   ├── klv_test.go
+│   │   │   ├── lpcm.go
+│   │   │   ├── lpcm_test.go
+│   │   │   ├── mjpeg.go
+│   │   │   ├── mpeg1_audio.go
+│   │   │   ├── mpeg1_video.go
+│   │   │   ├── mpeg4_audio.go
+│   │   │   ├── mpeg4_audio_latm.go
+│   │   │   ├── mpeg4_video.go
+│   │   │   ├── mpeg4_video_test.go
+│   │   │   ├── opus.go
+│   │   │   ├── opus_test.go
+│   │   │   ├── processor.go
+│   │   │   ├── processor_test.go
+│   │   │   ├── testdata
+│   │   │   ├── vp8.go
+│   │   │   └── vp9.go
+│   │   ├── hooks
+│   │   │   ├── hooks.go
+│   │   │   ├── on_connect.go
+│   │   │   ├── on_demand.go
+│   │   │   ├── on_init.go
+│   │   │   ├── on_read.go
+│   │   │   └── on_ready.go
+│   │   ├── logger
+│   │   │   ├── destination_file.go
+│   │   │   ├── destination.go
+│   │   │   ├── destination_stdout.go
+│   │   │   ├── destination_syslog.go
+│   │   │   ├── level.go
+│   │   │   ├── logger.go
+│   │   │   ├── syslog_unix.go
+│   │   │   ├── syslog_win.go
+│   │   │   └── writer.go
+│   │   ├── metrics
+│   │   │   ├── metrics.go
+│   │   │   └── metrics_test.go
+│   │   ├── playback
+│   │   │   ├── muxer_fmp4.go
+│   │   │   ├── muxer.go
+│   │   │   ├── muxer_mp4.go
+│   │   │   ├── on_get.go
+│   │   │   ├── on_get_test.go
+│   │   │   ├── on_list.go
+│   │   │   ├── on_list_test.go
+│   │   │   ├── segment_fmp4.go
+│   │   │   ├── segment_fmp4_test.go
+│   │   │   ├── server.go
+│   │   │   └── server_test.go
+│   │   ├── pprof
+│   │   │   ├── pprof.go
+│   │   │   └── pprof_test.go
+│   │   ├── protocols
+│   │   │   ├── hls
+│   │   │   ├── httpp
+│   │   │   ├── mpegts
+│   │   │   ├── rtmp
+│   │   │   ├── rtsp
+│   │   │   ├── tls
+│   │   │   ├── webrtc
+│   │   │   ├── websocket
+│   │   │   └── whip
+│   │   ├── recordcleaner
+│   │   │   ├── cleaner.go
+│   │   │   └── cleaner_test.go
+│   │   ├── recorder
+│   │   │   ├── format_fmp4.go
+│   │   │   ├── format_fmp4_part.go
+│   │   │   ├── format_fmp4_segment.go
+│   │   │   ├── format_fmp4_track.go
+│   │   │   ├── format.go
+│   │   │   ├── format_mpegts.go
+│   │   │   ├── format_mpegts_segment.go
+│   │   │   ├── recorder.go
+│   │   │   ├── recorder_instance.go
+│   │   │   └── recorder_test.go
+│   │   ├── recordstore
+│   │   │   ├── path.go
+│   │   │   ├── path_test.go
+│   │   │   ├── recordstore.go
+│   │   │   ├── segment.go
+│   │   │   └── segment_test.go
+│   │   ├── restrictnetwork
+│   │   │   └── restrict_network.go
+│   │   ├── rlimit
+│   │   │   ├── rlimit_unix.go
+│   │   │   └── rlimit_win.go
+│   │   ├── servers
+│   │   │   ├── hls
+│   │   │   ├── rtmp
+│   │   │   ├── rtsp
+│   │   │   ├── srt
+│   │   │   └── webrtc
+│   │   ├── staticsources
+│   │   │   ├── handler.go
+│   │   │   ├── hls
+│   │   │   ├── rpicamera
+│   │   │   ├── rtmp
+│   │   │   ├── rtsp
+│   │   │   ├── srt
+│   │   │   ├── udp
+│   │   │   └── webrtc
+│   │   ├── stream
+│   │   │   ├── stream_format.go
+│   │   │   ├── stream.go
+│   │   │   ├── stream_media.go
+│   │   │   └── stream_reader.go
+│   │   ├── test
+│   │   │   ├── auth_manager.go
+│   │   │   ├── formats.go
+│   │   │   ├── logger.go
+│   │   │   ├── medias.go
+│   │   │   ├── path_manager.go
+│   │   │   ├── static_source_parent.go
+│   │   │   ├── temp_file.go
+│   │   │   └── tls_cert.go
+│   │   ├── testapidocs
+│   │   │   └── apidocs_test.go
+│   │   ├── teste2e
+│   │   │   ├── build_images_test.go
+│   │   │   ├── hls_manager_test.go
+│   │   │   ├── images
+│   │   │   ├── rtsp_server_test.go
+│   │   │   └── tests_test.go
+│   │   └── unit
+│   │       ├── ac3.go
+│   │       ├── av1.go
+│   │       ├── base.go
+│   │       ├── g711.go
+│   │       ├── generic.go
+│   │       ├── h264.go
+│   │       ├── h265.go
+│   │       ├── klv.go
+│   │       ├── lpcm.go
+│   │       ├── mjpeg.go
+│   │       ├── mpeg1_audio.go
+│   │       ├── mpeg1_video.go
+│   │       ├── mpeg4_audio.go
+│   │       ├── mpeg4_audio_latm.go
+│   │       ├── mpeg4_video.go
+│   │       ├── opus.go
+│   │       ├── unit.go
+│   │       ├── vp8.go
+│   │       └── vp9.go
+│   ├── LICENSE
+│   ├── logo.png
+│   ├── main.go
+│   ├── Makefile
+│   ├── mediamtx.yml
+│   ├── README.md
+│   ├── scripts
+│   │   ├── apidocs.mk
+│   │   ├── binaries.mk
+│   │   ├── dockerhub.mk
+│   │   ├── format.mk
+│   │   ├── lint.mk
+│   │   ├── test-e2e.mk
+│   │   └── test.mk
+│   └── SECURITY.md
+├── license-destdir
+│   └── cortexa76
+│       └── mediamtx
+│           ├── generic_MIT
+│           └── recipeinfo
+├── mediamtx-git
+├── recipe-sysroot
+│   ├── sysroot-providers
+│   │   ├── gcc-runtime
+│   │   ├── glibc
+│   │   ├── go-runtime
+│   │   ├── libgcc
+│   │   ├── linux-libc-headers
+│   │   ├── virtual_aarch64-poky-linux-compilerlibs
+│   │   ├── virtual_aarch64-poky-linux-go-runtime
+│   │   ├── virtual_libc
+│   │   └── virtual_libiconv
+│   └── usr
+│       ├── include
+│       │   ├── aio.h
+│       │   ├── aliases.h
+│       │   ├── alloca.h
+│       │   ├── a.out.h
+│       │   ├── argp.h
+│       │   ├── argz.h
+│       │   ├── ar.h
+│       │   ├── arpa
+│       │   ├── asm
+│       │   ├── asm-generic
+│       │   ├── assert.h
+│       │   ├── bits
+│       │   ├── byteswap.h
+│       │   ├── c++
+│       │   ├── complex.h
+│       │   ├── cpio.h
+│       │   ├── ctype.h
+│       │   ├── dirent.h
+│       │   ├── dlfcn.h
+│       │   ├── drm
+│       │   ├── elf.h
+│       │   ├── endian.h
+│       │   ├── envz.h
+│       │   ├── err.h
+│       │   ├── errno.h
+│       │   ├── error.h
+│       │   ├── execinfo.h
+│       │   ├── fcntl.h
+│       │   ├── features.h
+│       │   ├── features-time64.h
+│       │   ├── fenv.h
+│       │   ├── fmtmsg.h
+│       │   ├── fnmatch.h
+│       │   ├── fpu_control-64.h
+│       │   ├── fpu_control.h
+│       │   ├── fstab.h
+│       │   ├── fts.h
+│       │   ├── ftw.h
+│       │   ├── gconv.h
+│       │   ├── getopt.h
+│       │   ├── glob.h
+│       │   ├── gnu
+│       │   ├── gnu-versions.h
+│       │   ├── grp.h
+│       │   ├── gshadow.h
+│       │   ├── iconv.h
+│       │   ├── ieee754-64.h
+│       │   ├── ieee754.h
+│       │   ├── ifaddrs.h
+│       │   ├── inttypes.h
+│       │   ├── langinfo.h
+│       │   ├── lastlog.h
+│       │   ├── libgen.h
+│       │   ├── libintl.h
+│       │   ├── limits.h
+│       │   ├── link.h
+│       │   ├── linux
+│       │   ├── locale.h
+│       │   ├── malloc.h
+│       │   ├── math.h
+│       │   ├── mcheck.h
+│       │   ├── memory.h
+│       │   ├── misc
+│       │   ├── mntent.h
+│       │   ├── monetary.h
+│       │   ├── mqueue.h
+│       │   ├── mtd
+│       │   ├── net
+│       │   ├── netash
+│       │   ├── netatalk
+│       │   ├── netax25
+│       │   ├── netdb.h
+│       │   ├── neteconet
+│       │   ├── netinet
+│       │   ├── netipx
+│       │   ├── netiucv
+│       │   ├── netpacket
+│       │   ├── netrom
+│       │   ├── netrose
+│       │   ├── nfs
+│       │   ├── nl_types.h
+│       │   ├── nss.h
+│       │   ├── obstack.h
+│       │   ├── paths.h
+│       │   ├── poll.h
+│       │   ├── printf.h
+│       │   ├── proc_service.h
+│       │   ├── protocols
+│       │   ├── pthread.h
+│       │   ├── pty.h
+│       │   ├── pwd.h
+│       │   ├── rdma
+│       │   ├── re_comp.h
+│       │   ├── regex.h
+│       │   ├── regexp.h
+│       │   ├── resolv.h
+│       │   ├── rpc
+│       │   ├── sched.h
+│       │   ├── scsi
+│       │   ├── search.h
+│       │   ├── semaphore.h
+│       │   ├── setjmp.h
+│       │   ├── sgtty.h
+│       │   ├── shadow.h
+│       │   ├── signal.h
+│       │   ├── sound
+│       │   ├── spawn.h
+│       │   ├── stab.h
+│       │   ├── stdbit.h
+│       │   ├── stdc-predef.h
+│       │   ├── stdint.h
+│       │   ├── stdio_ext.h
+│       │   ├── stdio.h
+│       │   ├── stdlib.h
+│       │   ├── string.h
+│       │   ├── strings.h
+│       │   ├── sys
+│       │   ├── syscall.h
+│       │   ├── sysexits.h
+│       │   ├── syslog.h
+│       │   ├── tar.h
+│       │   ├── termio.h
+│       │   ├── termios.h
+│       │   ├── tgmath.h
+│       │   ├── thread_db.h
+│       │   ├── threads.h
+│       │   ├── time.h
+│       │   ├── ttyent.h
+│       │   ├── uchar.h
+│       │   ├── ucontext.h
+│       │   ├── ulimit.h
+│       │   ├── unistd.h
+│       │   ├── utime.h
+│       │   ├── utmp.h
+│       │   ├── utmpx.h
+│       │   ├── values.h
+│       │   ├── video
+│       │   ├── wait.h
+│       │   ├── wchar.h
+│       │   ├── wctype.h
+│       │   ├── wordexp.h
+│       │   └── xen
+│       ├── lib
+│       │   ├── aarch64-poky-linux
+│       │   ├── audit
+│       │   ├── crt1.o
+│       │   ├── crti.o
+│       │   ├── crtn.o
+│       │   ├── gcc
+│       │   ├── gcrt1.o
+│       │   ├── go
+│       │   ├── grcrt1.o
+│       │   ├── ld-linux-aarch64.so.1
+│       │   ├── libanl.a
+│       │   ├── libanl.so -> libanl.so.1
+│       │   ├── libanl.so.1
+│       │   ├── libatomic.a
+│       │   ├── libatomic.so -> libatomic.so.1.2.0
+│       │   ├── libatomic.so.1 -> libatomic.so.1.2.0
+│       │   ├── libatomic.so.1.2.0
+│       │   ├── libBrokenLocale.a
+│       │   ├── libBrokenLocale.so -> libBrokenLocale.so.1
+│       │   ├── libBrokenLocale.so.1
+│       │   ├── libc.a
+│       │   ├── libc_malloc_debug.so -> libc_malloc_debug.so.0
+│       │   ├── libc_malloc_debug.so.0
+│       │   ├── libc_nonshared.a
+│       │   ├── libc.so
+│       │   ├── libc.so.6
+│       │   ├── libdl.a
+│       │   ├── libdl.so.2
+│       │   ├── libg.a
+│       │   ├── libgcc_s.so
+│       │   ├── libgcc_s.so.1
+│       │   ├── libgomp.a
+│       │   ├── libgomp.so -> libgomp.so.1.0.0
+│       │   ├── libgomp.so.1 -> libgomp.so.1.0.0
+│       │   ├── libgomp.so.1.0.0
+│       │   ├── libgomp.spec
+│       │   ├── libitm.a
+│       │   ├── libitm.so -> libitm.so.1.0.0
+│       │   ├── libitm.so.1 -> libitm.so.1.0.0
+│       │   ├── libitm.so.1.0.0
+│       │   ├── libitm.spec
+│       │   ├── libm-2.39.a
+│       │   ├── libm.a
+│       │   ├── libmcheck.a
+│       │   ├── libmemusage.so
+│       │   ├── libm.so
+│       │   ├── libm.so.6
+│       │   ├── libmvec.a
+│       │   ├── libmvec.so -> libmvec.so.1
+│       │   ├── libmvec.so.1
+│       │   ├── libnsl.so.1
+│       │   ├── libnss_compat.so -> libnss_compat.so.2
+│       │   ├── libnss_compat.so.2
+│       │   ├── libnss_db.so -> libnss_db.so.2
+│       │   ├── libnss_db.so.2
+│       │   ├── libnss_dns.so.2
+│       │   ├── libnss_files.so.2
+│       │   ├── libnss_hesiod.so -> libnss_hesiod.so.2
+│       │   ├── libnss_hesiod.so.2
+│       │   ├── libpcprofile.so
+│       │   ├── libpthread.a
+│       │   ├── libpthread.so -> libpthread.so.0
+│       │   ├── libpthread.so.0
+│       │   ├── libresolv.a
+│       │   ├── libresolv.so -> libresolv.so.2
+│       │   ├── libresolv.so.2
+│       │   ├── librt.a
+│       │   ├── librt.so -> librt.so.1
+│       │   ├── librt.so.1
+│       │   ├── libstdc++.a
+│       │   ├── libstdc++exp.a
+│       │   ├── libstdc++fs.a
+│       │   ├── libstdc++.so -> libstdc++.so.6.0.32
+│       │   ├── libstdc++.so.6 -> libstdc++.so.6.0.32
+│       │   ├── libstdc++.so.6.0.32
+│       │   ├── libsupc++.a
+│       │   ├── libthread_db.so -> libthread_db.so.1
+│       │   ├── libthread_db.so.1
+│       │   ├── libutil.a
+│       │   ├── libutil.so.1
+│       │   ├── Mcrt1.o
+│       │   ├── rcrt1.o
+│       │   ├── Scrt1.o
+│       │   ├── systemd
+│       │   └── tmpfiles.d
+│       └── share
+│           ├── gcc-13.4.0
+│           └── gdb
+├── recipe-sysroot-native
+│   ├── bin
+│   │   ├── ginstall-info
+│   │   ├── install-info
+│   │   ├── makeinfo
+│   │   ├── pdftexi2dvi
+│   │   ├── pod2texi
+│   │   ├── texi2any
+│   │   ├── texi2dvi
+│   │   ├── texi2pdf
+│   │   ├── texindex
+│   │   ├── txixml2texi
+│   │   └── update-info-dir
+│   ├── etc
+│   │   ├── bash_completion.d
+│   │   │   └── quilt
+│   │   ├── group
+│   │   ├── passwd
+│   │   ├── quilt.quiltrc
+│   │   ├── quiltrc
+│   │   └── xattr.conf
+│   ├── installeddeps
+│   │   ├── attr-native -> attr-native.07171fd11390163d09734845f19b0850af41369d7e657415d3df96361218ee63
+│   │   ├── attr-native.07171fd11390163d09734845f19b0850af41369d7e657415d3df96361218ee63
+│   │   ├── attr-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-attr-native.populate_sysroot
+│   │   ├── binutils-cross-aarch64 -> binutils-cross-aarch64.e464088aad70261fa57f494faeb27873654a1820901ea38e7729cda31cc53bef
+│   │   ├── binutils-cross-aarch64.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-binutils-cross-aarch64.populate_sysroot
+│   │   ├── binutils-cross-aarch64.e464088aad70261fa57f494faeb27873654a1820901ea38e7729cda31cc53bef
+│   │   ├── flex-native -> flex-native.1087e7616e021eaf7c6ce199de4937382b182e5f7805bdd4e851239fcaef989a
+│   │   ├── flex-native.1087e7616e021eaf7c6ce199de4937382b182e5f7805bdd4e851239fcaef989a
+│   │   ├── flex-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-flex-native.populate_sysroot
+│   │   ├── gcc-cross-aarch64 -> gcc-cross-aarch64.452f9a2d6124e6835107f162fe33c707a52ce4d6fe49ef60835a067a4b48a7fb
+│   │   ├── gcc-cross-aarch64.452f9a2d6124e6835107f162fe33c707a52ce4d6fe49ef60835a067a4b48a7fb
+│   │   ├── gcc-cross-aarch64.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-gcc-cross-aarch64.populate_sysroot
+│   │   ├── gcc-runtime -> gcc-runtime.b290a084e803b0b517478923bb4dddabf2e6fd573975c14dc0b40d87f2b0fa3e
+│   │   ├── gcc-runtime.b290a084e803b0b517478923bb4dddabf2e6fd573975c14dc0b40d87f2b0fa3e
+│   │   ├── gcc-runtime.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-cortexa76-gcc-runtime.populate_sysroot
+│   │   ├── gettext-minimal-native -> gettext-minimal-native.42fa6ce74aae92a7f325acbf531a9a755143970df7ab743ac2a792604cd82092
+│   │   ├── gettext-minimal-native.42fa6ce74aae92a7f325acbf531a9a755143970df7ab743ac2a792604cd82092
+│   │   ├── gettext-minimal-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-gettext-minimal-native.populate_sysroot
+│   │   ├── glibc -> glibc.01d4445441f19424d7504ae33176d8c4449b2931fd3389b7b52e922ed762cd1b
+│   │   ├── glibc.01d4445441f19424d7504ae33176d8c4449b2931fd3389b7b52e922ed762cd1b
+│   │   ├── glibc.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-cortexa76-glibc.populate_sysroot
+│   │   ├── gmp-native -> gmp-native.5698e8599d684acbd50be955fcf096b92f41e950faed0fb241c5afd28a3ec8f9
+│   │   ├── gmp-native.5698e8599d684acbd50be955fcf096b92f41e950faed0fb241c5afd28a3ec8f9
+│   │   ├── gmp-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-gmp-native.populate_sysroot
+│   │   ├── gnu-config-native -> gnu-config-native.0a581fc88c72a24d59ce61d97c1cd676de3c5691ebcbb743e07589da8697c59d
+│   │   ├── gnu-config-native.0a581fc88c72a24d59ce61d97c1cd676de3c5691ebcbb743e07589da8697c59d
+│   │   ├── gnu-config-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-gnu-config-native.populate_sysroot
+│   │   ├── go-binary-native -> go-binary-native.156c2195139d60720f5698e3391e61f52aad6dccd04db975d4c2c7c53ddeda16
+│   │   ├── go-binary-native.156c2195139d60720f5698e3391e61f52aad6dccd04db975d4c2c7c53ddeda16
+│   │   ├── go-binary-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-go-binary-native.populate_sysroot
+│   │   ├── go-cross-cortexa76 -> go-cross-cortexa76.586e9260b31cd4d9347f539ec26d40c371acea42b7de4d22addcd34824306c6e
+│   │   ├── go-cross-cortexa76.586e9260b31cd4d9347f539ec26d40c371acea42b7de4d22addcd34824306c6e
+│   │   ├── go-cross-cortexa76.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-go-cross-cortexa76.populate_sysroot
+│   │   ├── go-runtime -> go-runtime.b5b6d9f2b238e7c07efc7d52af2bc43b1b619b337366b0e9652483ab6f806606
+│   │   ├── go-runtime.b5b6d9f2b238e7c07efc7d52af2bc43b1b619b337366b0e9652483ab6f806606
+│   │   ├── go-runtime.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-cortexa76-go-runtime.populate_sysroot
+│   │   ├── index.do_collect_spdx_deps
+│   │   ├── index.do_fetch
+│   │   ├── index.do_patch
+│   │   ├── index.do_prepare_recipe_sysroot
+│   │   ├── libgcc -> libgcc.fdc9779d06194ae49975f238dc04ea5827f340e03c3285c6314ad65ddcd5e284
+│   │   ├── libgcc.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-cortexa76-libgcc.populate_sysroot
+│   │   ├── libgcc.fdc9779d06194ae49975f238dc04ea5827f340e03c3285c6314ad65ddcd5e284
+│   │   ├── libmpc-native -> libmpc-native.3416deaf29cbfc97bdbbf9548821c75862a7f7e929d9fe166a6bb3ea2f0b2003
+│   │   ├── libmpc-native.3416deaf29cbfc97bdbbf9548821c75862a7f7e929d9fe166a6bb3ea2f0b2003
+│   │   ├── libmpc-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-libmpc-native.populate_sysroot
+│   │   ├── libtool-native -> libtool-native.be8d0e2e8c5f667269ef846003bae526c2eb4543a14bbb110a87fe9bfd84e555
+│   │   ├── libtool-native.be8d0e2e8c5f667269ef846003bae526c2eb4543a14bbb110a87fe9bfd84e555
+│   │   ├── libtool-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-libtool-native.populate_sysroot
+│   │   ├── linux-libc-headers -> linux-libc-headers.5f1548ae56703395cf2ddd9440b4c4a33d53c50f7ffa22b88ddd05cccbb86ee9
+│   │   ├── linux-libc-headers.5f1548ae56703395cf2ddd9440b4c4a33d53c50f7ffa22b88ddd05cccbb86ee9
+│   │   ├── linux-libc-headers.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-cortexa76-linux-libc-headers.populate_sysroot
+│   │   ├── m4-native -> m4-native.e93cd2e987a03d84ca57a88c81b3e1232a530a0d22edb6b3f6ebc7fda6ac0164
+│   │   ├── m4-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-m4-native.populate_sysroot
+│   │   ├── m4-native.e93cd2e987a03d84ca57a88c81b3e1232a530a0d22edb6b3f6ebc7fda6ac0164
+│   │   ├── mpfr-native -> mpfr-native.a31d1bfde9cca3e4254dc5e4030f8863f31aedf275d80c679594fb6151e1696d
+│   │   ├── mpfr-native.a31d1bfde9cca3e4254dc5e4030f8863f31aedf275d80c679594fb6151e1696d
+│   │   ├── mpfr-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-mpfr-native.populate_sysroot
+│   │   ├── patch-native -> patch-native.611ecc63505ba26877f5c1a03faa46a5deb6ea40b5534f2830041193caa8d786
+│   │   ├── patch-native.611ecc63505ba26877f5c1a03faa46a5deb6ea40b5534f2830041193caa8d786
+│   │   ├── patch-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-patch-native.populate_sysroot
+│   │   ├── pseudo-native -> pseudo-native.b95ed169fcbc8b44cd1050faeb0839822d471d221b0fb6710e7dcc78bf214382
+│   │   ├── pseudo-native.b95ed169fcbc8b44cd1050faeb0839822d471d221b0fb6710e7dcc78bf214382
+│   │   ├── pseudo-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-pseudo-native.populate_sysroot
+│   │   ├── quilt-native -> quilt-native.ede2857076ce766016f89377bd21b938ca44805e581b25ed6ee1754196f4c5b7
+│   │   ├── quilt-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-quilt-native.populate_sysroot
+│   │   ├── quilt-native.ede2857076ce766016f89377bd21b938ca44805e581b25ed6ee1754196f4c5b7
+│   │   ├── sqlite3-native -> sqlite3-native.145c9f1cd0fb3a9ff0b7872342998191bc911900716fefcd241d9e45b03fb5d8
+│   │   ├── sqlite3-native.145c9f1cd0fb3a9ff0b7872342998191bc911900716fefcd241d9e45b03fb5d8
+│   │   ├── sqlite3-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-sqlite3-native.populate_sysroot
+│   │   ├── texinfo-dummy-native -> texinfo-dummy-native.a0b3b091bef09429e543e5be900aa3dd517c2c92a3475387ec7d11d0262ea681
+│   │   ├── texinfo-dummy-native.a0b3b091bef09429e543e5be900aa3dd517c2c92a3475387ec7d11d0262ea681
+│   │   ├── texinfo-dummy-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-texinfo-dummy-native.populate_sysroot
+│   │   ├── xz-native -> xz-native.ffdd04a6c7883eb2b92a44e5aabf6f6c0be9b8b3afa346789528db7f8152bb59
+│   │   ├── xz-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-xz-native.populate_sysroot
+│   │   ├── xz-native.ffdd04a6c7883eb2b92a44e5aabf6f6c0be9b8b3afa346789528db7f8152bb59
+│   │   ├── zlib-native -> zlib-native.1718edd5c11b77e7e260f516d40092a234f6b3560d17123b8fa3a9faa85b9dd1
+│   │   ├── zlib-native.1718edd5c11b77e7e260f516d40092a234f6b3560d17123b8fa3a9faa85b9dd1
+│   │   ├── zlib-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-zlib-native.populate_sysroot
+│   │   ├── zstd-native -> zstd-native.995c30b7f911da2d77f53f93a53691ac8d251169ad55281a0cbcacc7a354c5c1
+│   │   ├── zstd-native.995c30b7f911da2d77f53f93a53691ac8d251169ad55281a0cbcacc7a354c5c1
+│   │   └── zstd-native.complete -> /home/mgerken/montana_hub/yocto/poky/build/tmp/sstate-control/manifest-x86_64-zstd-native.populate_sysroot
+│   ├── sysroot-providers
+│   │   ├── attr-native
+│   │   ├── binutils-cross-aarch64
+│   │   ├── flex-native
+│   │   ├── gcc-cross-aarch64
+│   │   ├── gettext-minimal-native
+│   │   ├── gmp-native
+│   │   ├── gnu-config-native
+│   │   ├── go-binary-native
+│   │   ├── go-cross-cortexa76
+│   │   ├── go-native
+│   │   ├── libmpc-native
+│   │   ├── libtool-native
+│   │   ├── m4-native
+│   │   ├── mpfr-native
+│   │   ├── patch-native
+│   │   ├── patch-replacement-native
+│   │   ├── pseudo-native
+│   │   ├── quilt-native
+│   │   ├── sqlite3-native
+│   │   ├── texinfo-dummy-native
+│   │   ├── virtual_aarch64-poky-linux-binutils
+│   │   ├── virtual_aarch64-poky-linux-g++
+│   │   ├── virtual_aarch64-poky-linux-gcc
+│   │   ├── virtual_cortexa76-go
+│   │   ├── virtual_fakeroot-native
+│   │   ├── xz-native
+│   │   ├── zlib-native
+│   │   └── zstd-native
+│   └── usr
+│       ├── bin
+│       │   ├── aarch64-poky-linux
+│       │   ├── attr
+│       │   ├── flex
+│       │   ├── flex++ -> flex
+│       │   ├── flex.real
+│       │   ├── getfattr
+│       │   ├── gnu-configize
+│       │   ├── go
+│       │   ├── gofmt
+│       │   ├── guards
+│       │   ├── libtool
+│       │   ├── libtoolize
+│       │   ├── lzcat -> xz
+│       │   ├── lzcmp -> xzdiff
+│       │   ├── lzdiff -> xzdiff
+│       │   ├── lzegrep -> xzgrep
+│       │   ├── lzfgrep -> xzgrep
+│       │   ├── lzgrep -> xzgrep
+│       │   ├── lzless -> xzless
+│       │   ├── lzma -> xz
+│       │   ├── lzmadec
+│       │   ├── lzmainfo
+│       │   ├── lzmore -> xzmore
+│       │   ├── m4
+│       │   ├── patch
+│       │   ├── pseudo
+│       │   ├── pseudodb
+│       │   ├── pseudolog
+│       │   ├── pzstd
+│       │   ├── quilt
+│       │   ├── setfattr
+│       │   ├── sqlite3
+│       │   ├── unlzma -> xz
+│       │   ├── unxz -> xz
+│       │   ├── unzstd -> zstd
+│       │   ├── xz
+│       │   ├── xzcat -> xz
+│       │   ├── xzcmp -> xzdiff
+│       │   ├── xzdec
+│       │   ├── xzdiff
+│       │   ├── xzegrep -> xzgrep
+│       │   ├── xzfgrep -> xzgrep
+│       │   ├── xzgrep
+│       │   ├── xzless
+│       │   ├── xzmore
+│       │   ├── zstd
+│       │   ├── zstdcat -> zstd
+│       │   ├── zstdgrep
+│       │   ├── zstdless
+│       │   └── zstdmt -> zstd
+│       ├── include
+│       │   ├── attr
+│       │   ├── FlexLexer.h
+│       │   ├── gmp.h
+│       │   ├── gmpxx.h
+│       │   ├── libltdl
+│       │   ├── ltdl.h
+│       │   ├── lzma
+│       │   ├── lzma.h
+│       │   ├── mpc.h
+│       │   ├── mpf2mpfr.h
+│       │   ├── mpfr.h
+│       │   ├── sqlite3ext.h
+│       │   ├── sqlite3.h
+│       │   ├── zconf.h
+│       │   ├── zdict.h
+│       │   ├── zlib.h
+│       │   ├── zstd_errors.h
+│       │   └── zstd.h
+│       ├── lib
+│       │   ├── aarch64-poky-linux
+│       │   ├── go
+│       │   ├── libattr.so -> libattr.so.1.1.2501
+│       │   ├── libattr.so.1 -> libattr.so.1.1.2501
+│       │   ├── libattr.so.1.1.2501
+│       │   ├── libfl.so -> libfl.so.2.0.0
+│       │   ├── libfl.so.2 -> libfl.so.2.0.0
+│       │   ├── libfl.so.2.0.0
+│       │   ├── libgmp.so -> libgmp.so.10.5.0
+│       │   ├── libgmp.so.10 -> libgmp.so.10.5.0
+│       │   ├── libgmp.so.10.5.0
+│       │   ├── libgmpxx.so -> libgmpxx.so.4.7.0
+│       │   ├── libgmpxx.so.4 -> libgmpxx.so.4.7.0
+│       │   ├── libgmpxx.so.4.7.0
+│       │   ├── libltdl.so -> libltdl.so.7.3.2
+│       │   ├── libltdl.so.7 -> libltdl.so.7.3.2
+│       │   ├── libltdl.so.7.3.2
+│       │   ├── liblzma.so -> liblzma.so.5.4.7
+│       │   ├── liblzma.so.5 -> liblzma.so.5.4.7
+│       │   ├── liblzma.so.5.4.7
+│       │   ├── libmpc.so -> libmpc.so.3.3.1
+│       │   ├── libmpc.so.3 -> libmpc.so.3.3.1
+│       │   ├── libmpc.so.3.3.1
+│       │   ├── libmpfr.so -> libmpfr.so.6.2.1
+│       │   ├── libmpfr.so.6 -> libmpfr.so.6.2.1
+│       │   ├── libmpfr.so.6.2.1
+│       │   ├── libsqlite3.so -> libsqlite3.so.0.8.6
+│       │   ├── libsqlite3.so.0 -> libsqlite3.so.0.8.6
+│       │   ├── libsqlite3.so.0.8.6
+│       │   ├── libz.a
+│       │   ├── libz.so -> libz.so.1.3.1
+│       │   ├── libz.so.1 -> libz.so.1.3.1
+│       │   ├── libz.so.1.3.1
+│       │   ├── libzstd.a
+│       │   ├── libzstd.so -> libzstd.so.1.5.5
+│       │   ├── libzstd.so.1 -> libzstd.so.1.5.5
+│       │   ├── libzstd.so.1.5.5
+│       │   ├── pkgconfig
+│       │   └── pseudo
+│       ├── libexec
+│       │   └── aarch64-poky-linux
+│       └── share
+│           ├── aclocal
+│           ├── gettext
+│           ├── gnu-config
+│           ├── libtool
+│           └── quilt
+├── source-date-epoch
+│   └── __source_date_epoch.txt
+├── spdx
+│   └── deps.json
+└── temp
+    ├── depsig.do_deploy_source_date_epoch -> depsig.do_deploy_source_date_epoch.556021
+    ├── depsig.do_deploy_source_date_epoch.556021
+    ├── depsig.do_recipe_qa -> depsig.do_recipe_qa.555765
+    ├── depsig.do_recipe_qa.555765
+    ├── log.do_cleanall -> log.do_cleanall.555527
+    ├── log.do_cleanall.555527
+    ├── log.do_cleansstate -> log.do_cleansstate.555514
+    ├── log.do_cleansstate.555514
+    ├── log.do_collect_spdx_deps -> log.do_collect_spdx_deps.555997
+    ├── log.do_collect_spdx_deps.555997
+    ├── log.do_deploy_source_date_epoch -> log.do_deploy_source_date_epoch.556021
+    ├── log.do_deploy_source_date_epoch.556021
+    ├── log.do_fetch -> log.do_fetch.555796
+    ├── log.do_fetch.555796
+    ├── log.do_patch -> log.do_patch.555996
+    ├── log.do_patch.555996
+    ├── log.do_populate_lic -> log.do_populate_lic.556022
+    ├── log.do_populate_lic.556022
+    ├── log.do_prepare_recipe_sysroot -> log.do_prepare_recipe_sysroot.555963
+    ├── log.do_prepare_recipe_sysroot.555963
+    ├── log.do_recipe_qa -> log.do_recipe_qa.555765
+    ├── log.do_recipe_qa.555765
+    ├── log.do_unpack -> log.do_unpack.555962
+    ├── log.do_unpack.555962
+    ├── log.task_order
+    ├── run.base_do_fetch.555796
+    ├── run.create_source_date_epoch_stamp.555962
+    ├── run.do_cleanall -> run.do_cleanall.555527
+    ├── run.do_cleanall.555527
+    ├── run.do_cleansstate -> run.do_cleansstate.555514
+    ├── run.do_cleansstate.555514
+    ├── run.do_collect_spdx_deps -> run.do_collect_spdx_deps.555997
+    ├── run.do_collect_spdx_deps.555997
+    ├── run.do_deploy_source_date_epoch -> run.do_deploy_source_date_epoch.556021
+    ├── run.do_deploy_source_date_epoch.556021
+    ├── run.do_fetch -> run.do_fetch.555796
+    ├── run.do_fetch.555796
+    ├── run.do_patch -> run.do_patch.555996
+    ├── run.do_patch.555996
+    ├── run.do_populate_lic -> run.do_populate_lic.556022
+    ├── run.do_populate_lic.556022
+    ├── run.do_prepare_recipe_sysroot -> run.do_prepare_recipe_sysroot.555963
+    ├── run.do_prepare_recipe_sysroot.555963
+    ├── run.do_qa_patch.555996
+    ├── run.do_qa_unpack.555962
+    ├── run.do_recipe_qa -> run.do_recipe_qa.555765
+    ├── run.do_recipe_qa.555765
+    ├── run.do_unpack -> run.do_unpack.555962
+    ├── run.do_unpack.555962
+    ├── run.extend_recipe_sysroot.555796
+    ├── run.extend_recipe_sysroot.555963
+    ├── run.extend_recipe_sysroot.555996
+    ├── run.extend_recipe_sysroot.555997
+    ├── run.fetcher_hashes_dummyfunc.555796
+    ├── run.go_do_unpack.555962
+    ├── run.patch_do_patch.555996
+    ├── run.populate_lic_qa_checksum.556022
+    ├── run.sstate_archive_package.555765
+    ├── run.sstate_archive_package.556021
+    ├── run.sstate_create_and_sign_package.555765
+    ├── run.sstate_create_and_sign_package.556021
+    ├── run.sstate_hardcode_path.555765
+    ├── run.sstate_hardcode_path.556021
+    ├── run.sstate_hardcode_path_unpack.555765
+    ├── run.sstate_hardcode_path_unpack.556021
+    ├── run.sstate_report_unihash.555765
+    ├── run.sstate_report_unihash.556021
+    ├── run.sstate_task_postfunc.555765
+    ├── run.sstate_task_postfunc.556021
+    ├── run.sstate_task_prefunc.555765
+    ├── run.sstate_task_prefunc.556021
+    ├── run.sstate_task_prefunc.556022
+    ├── run.target_add_sysroot_deps.555765
+    ├── run.target_add_sysroot_deps.556021
+    ├── run.uninative_changeinterp.555765
+    └── run.uninative_changeinterp.556021
+
+142 directories, 703 files

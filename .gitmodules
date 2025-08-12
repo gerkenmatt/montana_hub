@@ -1,0 +1,9 @@
+[submodule "wz_mini_hacks"]
+	path = wz_mini_hacks
+	url = https://github.com/gtxaspec/wz_mini_hacks.git
+[submodule "yocto/poky"]
+	path = yocto/poky
+	url = https://git.yoctoproject.org/poky.git
+[submodule "yocto/meta-openembedded"]
+	path = yocto/meta-openembedded
+	url = https://git.openembedded.org/meta-openembedded.git
