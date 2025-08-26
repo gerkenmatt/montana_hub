@@ -1,0 +1,12 @@
+[Unit]
+Description=FFmpeg Wyze Camera Stream
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/ffmpeg -rtsp_transport tcp -i "rtsp://192.168.27.69:8554/360p" -c copy -f mpegts tcp://0.0.0.0:9090?listen=1
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
