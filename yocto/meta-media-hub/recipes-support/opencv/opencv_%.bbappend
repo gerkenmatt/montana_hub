@@ -1,1 +1,1 @@
-PACKAGECONFIG:pn-opencv = "python3 gstreamer ffmpeg"
+PACKAGECONFIG:pn-opencv = "python3 gstreamer ffmpeg dnn "

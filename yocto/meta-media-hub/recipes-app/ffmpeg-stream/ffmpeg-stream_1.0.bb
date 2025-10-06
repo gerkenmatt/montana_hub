@@ -2,20 +2,22 @@ SUMMARY = "FFmpeg RTSP to TCP Streaming Service for Wyze Cams"
 DESCRIPTION = "A systemd service to permanently stream from a Wyze camera using ffmpeg."
 LICENSE = "CLOSED"
 
-# Source file is local to the recipe
-SRC_URI = "file://ffmpeg-stream.service"
+# Add both service files to the source URI
+SRC_URI = " \
+    file://ffmpeg-stream.service \
+    file://ffmpeg-stream2.service \
+"
 
-# Inherit the systemd class to handle service installation and enablement
 inherit systemd
 
-# Specify the name of the service file associated with this package
-SYSTEMD_SERVICE:${PN} = "ffmpeg-stream.service"
+# Tell systemd to manage both services
+SYSTEMD_SERVICE:${PN} = "ffmpeg-stream.service ffmpeg-stream2.service"
 
-# Point S to the work directory where SRC_URI files are placed
 S = "${WORKDIR}"
 
-# Manually define the installation steps, mirroring the working recipe
+# Install both service files
 do_install() {
     install -d ${D}${systemd_unitdir}/system
     install -m 0644 ${S}/ffmpeg-stream.service ${D}${systemd_unitdir}/system/
+    install -m 0644 ${S}/ffmpeg-stream2.service ${D}${systemd_unitdir}/system/
 }

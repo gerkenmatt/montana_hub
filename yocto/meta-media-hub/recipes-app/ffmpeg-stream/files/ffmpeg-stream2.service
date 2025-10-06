@@ -1,0 +1,19 @@
+# ffmpeg-stream2.service
+[Unit]
+Description=FFmpeg Wyze Camera Stream 2
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/ffmpeg -rtsp_transport tcp -use_wallclock_as_timestamps 1 -fflags +genpts+igndts \
+  -i "rtsp://192.168.27.101:8554/360p" -map 0:v:0 -an -c:v copy -bsf:v h264_mp4toannexb \
+  -muxpreload 0 -muxdelay 0 -flush_packets 1 -f mpegts "tcp://0.0.0.0:9091?listen=1"
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.
+
+
+
+
