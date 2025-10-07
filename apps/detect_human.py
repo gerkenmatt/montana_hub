@@ -100,10 +100,11 @@ def main(stream_url, model_path, confidence, nms):
                 if human_detected:
                     break
 
-            current_status = 1 if human_detected else 0
-            if current_status != last_status:
-                print(current_status, flush=True)
-                last_status = current_status
+            # Output Signal (Overwriting the current line)
+            current_status = "HUMAN DETECTED" if human_detected else "CLEAR"
+
+            # Use '\r' (carriage return) to jump to the start of the line
+            print(f"STATUS: {current_status}\r", end="", flush=True)
 
         except KeyboardInterrupt:
             print("\nINFO: Exiting.")
