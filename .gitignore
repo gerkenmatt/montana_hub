@@ -1,2 +1,3 @@
 # Ignore the entire Yocto build directory
 /yocto/poky/build/
+/apps/screenshots
