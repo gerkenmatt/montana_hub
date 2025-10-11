@@ -1,3 +1,4 @@
 # Ignore the entire Yocto build directory
 /yocto/poky/build/
-/apps/screenshots
+/apps/host/screenshots
+/yocto/meta-media-hub/recipes-connectivity/wireguard/files
