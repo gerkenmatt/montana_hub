@@ -1,0 +1,24 @@
+[Unit]
+Description=Human Detector Service (Camera 2)
+After=network-online.target ffmpeg-stream2.service
+Wants=ffmpeg-stream2.service
+
+[Service]
+# Load credentials from the private environment file
+EnvironmentFile=/etc/detector.env
+
+# Use the variables from the file
+ExecStart=/usr/bin/python3 /usr/bin/human_detector.py \
+    --stream "tcp://127.0.0.1:9091" \
+    --camera-id "camera2" \
+    --broker "${MQTT_BROKER}" \
+    --port "${MQTT_PORT}" \
+    --user "${MQTT_USER}" \
+    --password "${MQTT_PASSWORD}"
+
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
