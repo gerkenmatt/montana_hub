@@ -2,3 +2,4 @@
 /yocto/poky/build/
 /apps/host/screenshots
 /yocto/meta-media-hub/recipes-connectivity/wireguard/files
+/yocto/meta-private-secrets
