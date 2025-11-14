@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
+# meta-media-hub/recipes-app/human-detector/files/human_detector.py
 
-# human_detector.py
 import cv2
 import numpy as np
 import argparse
 import time
-import paho.mqtt.client as mqtt  # New import
-import json                      # New import
+import paho.mqtt.client as mqtt
+import json
 import sys
 
 cv2.setNumThreads(1)
@@ -16,65 +15,60 @@ DEFAULT_MODEL_PATH = "/usr/share/human-detector/"
 DEFAULT_CONF_THRESHOLD = 0.5
 DEFAULT_NMS_THRESHOLD = 0.4
 
-def connect_mqtt(broker, port, user, password, client_id):
-    """Establishes and returns a connection to the MQTT broker."""
-    print(f"INFO: Connecting to MQTT broker at {broker}...")
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id)
+# --- MQTT Client Setup ---
+def connect_mqtt(broker, port, user, password, camera_id):
+    """Connects to the MQTT broker."""
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, f"human-detector-{camera_id}")
     client.username_pw_set(user, password)
     client.tls_set()
+    
     try:
         client.connect(broker, port, 60)
+        print(f"INFO: Successfully connected to MQTT broker at {broker}")
         client.loop_start()
-        print("INFO: MQTT connection successful.")
         return client
     except Exception as e:
-        print(f"ERROR: Could not connect to MQTT broker: {e}", file=sys.stderr)
+        print(f"ERROR: Could not connect to MQTT broker: {e}")
         return None
 
-def main(stream_url, model_path, confidence, nms, camera_id, broker, port, user, password):
+def main(stream_url, model_path, confidence, nms, mqtt_client, camera_id):
     """
     Connects to a video stream, detects humans, and publishes MQTT alerts.
     """
-    # --- Load YOLO Model (same as your script) ---
+    # --- Load YOLO Model ---
     try:
         weights_path = f"{model_path}/yolov4-tiny.weights"
         cfg_path = f"{model_path}/yolov4-tiny.cfg"
         names_path = f"{model_path}/coco.names"
-        
+
         net = cv2.dnn.readNet(weights_path, cfg_path)
         net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
 
         with open(names_path, "r") as f:
             classes = [line.strip() for line in f.readlines()]
-        
-        output_layers = [net.getLayerNames()[i - 1] for i in net.getUnconnectedOutLayers()]
+
+        layer_names = net.getLayerNames()
+        output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
         print(f"INFO: Model loaded successfully. Looking for 'person' class.")
     except Exception as e:
-        print(f"ERROR: Could not load model. Error: {e}", file=sys.stderr)
+        print(f"ERROR: Could not load model. Check paths. Error: {e}", file=sys.stderr)
         return
 
-    # --- Connect to MQTT ---
-    mqtt_client_id = f"pi-detector-{camera_id}"
-    mqtt_topic = f"cabin/camera/{camera_id}/detection"
-    mqtt_client = connect_mqtt(broker, port, user, password, mqtt_client_id)
-    if not mqtt_client:
-        return # Exit if MQTT connection fails
-
-    # --- Build GStreamer Pipeline (same as your script) ---
+    # --- Build GStreamer Pipeline ---
     try:
         parts = stream_url.replace("tcp://", "").split(":")
         host = parts[0]
-        port_num = int(parts[1])
+        port = int(parts[1])
         pipeline = (
-            f"tcpclientsrc host={host} port={port_num} ! "
+            f"tcpclientsrc host={host} port={port} ! "
             "tsdemux ! h264parse ! avdec_h264 ! videoconvert ! "
             "video/x-raw,format=BGR ! queue max-size-buffers=1 leaky=downstream ! "
             "appsink sync=false max-buffers=1 drop=true"
         )
         print(f"INFO: Using GStreamer pipeline: {pipeline}")
     except Exception as e:
-        print(f"ERROR: Invalid stream URL. Error: {e}", file=sys.stderr)
+        print(f"ERROR: Invalid stream URL. {e}", file=sys.stderr)
         return
 
     # --- Connect to Stream ---
@@ -86,26 +80,28 @@ def main(stream_url, model_path, confidence, nms, camera_id, broker, port, user,
     print(f"INFO: Successfully connected to stream. Starting detection loop...")
 
     # --- Detection Loop ---
-    last_status = "unknown"  # Holds the last state ('clear' or 'detected')
     frame_idx = 0
+    last_detection_state = None 
+    detection_topic = f"cabin/camera/{camera_id}/detection" 
+
     while True:
         try:
             ret, frame = cap.read()
             if not ret:
-                print("WARNING: Pipeline source ended. Check ffmpeg service. Reconnecting...")
+                print("WARNING: Pipeline source ended. Reconnecting...", file=sys.stderr)
                 time.sleep(5)
                 cap.release()
                 cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
                 continue
 
-            human_detected = False
-            
-            # --- Frame skipping (same as your script) ---
+            # Only run detection every 5th frame to save CPU
             frame_idx += 1
             if frame_idx % 5:
                 continue
 
-            # --- DNN Processing (same as your script) ---
+            current_detection_state = False 
+            max_confidence = 0.0  # <-- **NEW**: Track highest confidence score
+            
             blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (320, 320), swapRB=True, crop=False)
             net.setInput(blob)
             layer_outputs = net.forward(output_layers)
@@ -115,31 +111,30 @@ def main(stream_url, model_path, confidence, nms, camera_id, broker, port, user,
                     scores = detection[5:]
                     class_id = np.argmax(scores)
                     conf = scores[class_id]
-
                     if classes[class_id] == "person" and conf > confidence:
-                        human_detected = True
-                        break
-                if human_detected:
-                    break
-            
-            # --- NEW: Stateful MQTT Publishing Logic ---
-            current_status = "detected" if human_detected else "clear"
-            
-            if current_status != last_status:
-                print(f"INFO: Status change. New status: {current_status.upper()}")
-                payload = json.dumps({
-                    "event": f"person_{current_status}",
-                    "camera_id": camera_id,
-                    "timestamp": time.time()
-                })
+                        current_detection_state = True # Human detected
+                        if conf > max_confidence:  # <-- **NEW**: Store highest score
+                            max_confidence = conf
+
+            # --- MQTT Publish Logic ---
+            if current_detection_state != last_detection_state:
+                last_detection_state = current_detection_state
+                
+                if current_detection_state:
+                    print(f"INFO: State Change: HUMAN DETECTED ({max_confidence*100:.0f}%). Publishing to {detection_topic}")
+                    # <-- **MODIFIED**: Add confidence to payload
+                    payload = json.dumps({
+                        "event": "person_detected",
+                        "camera_id": camera_id,
+                        "confidence": float(max_confidence), 
+                        "timestamp": time.time()
+                    })
+                else:
+                    print(f"INFO: State Change: CLEAR. Publishing to {detection_topic}")
+                    payload = json.dumps({"event": "clear", "timestamp": time.time()})
                 
                 if mqtt_client:
-                    mqtt_client.publish(mqtt_topic, payload, qos=1, retain=True)
-                
-                last_status = current_status
-            
-            # Print to stdout as well, for 'systemctl status' debugging
-            print(f"STATUS: {current_status.upper()}\r", end="", flush=True)
+                    mqtt_client.publish(detection_topic, payload, qos=1, retain=True)
 
         except KeyboardInterrupt:
             print("\nINFO: Exiting.")
@@ -148,26 +143,32 @@ def main(stream_url, model_path, confidence, nms, camera_id, broker, port, user,
             print(f"ERROR: An error occurred in the loop: {e}", file=sys.stderr)
             time.sleep(5)
 
-    cap.release()
     if mqtt_client:
         mqtt_client.loop_stop()
-        mqtt_client.disconnect()
-    print("INFO: Shutdown complete.")
+    cap.release()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Detect humans and publish MQTT alerts.")
-    parser.add_argument("--stream", type=str, required=True, help="URL of the TCP stream.")
-    parser.add_argument("--camera-id", type=str, required=True, help="Friendly name for this camera (e.g., 'camera1').")
-    parser.add_argument("--model-path", type=str, default=DEFAULT_MODEL_PATH)
-    parser.add_argument("--confidence", type=float, default=DEFAULT_CONF_THRESHOLD)
-    parser.add_argument("--nms", type=float, default=DEFAULT_NMS_THRESHOLD)
+    # (Arguments are the same as before)
+    parser.add_argument("--stream", type=str, required=True, help="URL of the TCP or RTSP stream.")
+    parser.add_argument("--model-path", type=str, default=DEFAULT_MODEL_PATH, help="Path to the directory containing model files.")
+    parser.add_argument("--confidence", type=float, default=DEFAULT_CONF_THRESHOLD, help="Minimum detection confidence.")
+    parser.add_argument("--nms", type=float, default=DEFAULT_NMS_THRESHOLD, help="Non-Maximum Suppression threshold.")
     
-    # New MQTT arguments
-    parser.add_argument("--broker", type=str, required=True, help="MQTT broker address.")
-    parser.add_argument("--port", type=int, default=8883, help="MQTT broker port.")
-    parser.add_argument("--user", type=str, required=True, help="MQTT username.")
-    parser.add_argument("--password", type=str, required=True, help="MQTT password.")
+    # --- NEW: MQTT args ---
+    # These are passed in by the .service file
+    parser.add_argument("--broker", required=True, help="MQTT broker address")
+    parser.add_argument("--port", type=int, default=8883, help="MQTT broker port")
+    parser.add_argument("--user", required=True, help="MQTT username")
+    parser.add_argument("--password", required=True, help="MQTT password")
+    parser.add_argument("--camera-id", required=True, help="Unique ID for this camera (e.g., camera1)")
     
     args = parser.parse_args()
-    main(args.stream, args.model_path, args.confidence, args.nms,
-         args.camera_id, args.broker, args.port, args.user, args.password)
+
+    # (MQTT connection)
+    client = connect_mqtt(args.broker, args.port, args.user, args.password, args.camera_id)
+    if not client:
+        print("ERROR: Failed to connect to MQTT. Exiting.", file=sys.stderr)
+        sys.exit(1)
+        
+    main(args.stream, args.model_path, args.confidence, args.nms, client, args.camera_id)

@@ -90,9 +90,21 @@ def main():
                     camera_id = msg.topic.split('/')[2]
                     payload = json.loads(msg.payload.decode())
                     status_text = payload.get("event", payload.get("status", "UNKNOWN")).upper()
+                    print("status_text: " + status_text)
 
                     if "PERSON_DETECTED" in status_text or "HUMAN" in status_text:
-                        console.print(Panel(f"[bold]Camera: {camera_id}[/bold]", title="🚨 HUMAN DETECTED 🚨", style="bold red", padding=(1, 4)))
+                        # Build panel content with confidence score
+                        panel_content = f"[bold]Camera: {camera_id}[/bold]"
+                        confidence_score = payload.get("confidence")
+                        if confidence_score is not None: 
+                            # Format it as a percentage
+                            panel_content += f"\n[white]Confidence: {confidence_score*100:.0f}%[/white]"
+                        console.print(Panel(
+                            panel_content, 
+                            title = "HUMAN DETECTED", 
+                            style="bold red", 
+                            padding=(1, 4)
+                            ))
                     else: 
                         console.print(Panel(f"[bold]Camera: {camera_id}[/bold]", title=f"✅ STATUS: {status_text}", style="bold green", padding=(1, 4)))
                 except Exception as e:
