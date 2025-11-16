@@ -19,7 +19,7 @@ def main():
     )
     parser.add_argument(
         "--port",
-        default="9090",
+        default="9190",
         help="The port for the specific camera stream on the Pi.\n(default: 9090)"
     )
     args = parser.parse_args()
