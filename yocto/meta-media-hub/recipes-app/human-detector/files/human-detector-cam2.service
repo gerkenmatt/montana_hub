@@ -15,6 +15,7 @@ ExecStart=/usr/bin/python3 -u /usr/bin/human_detector.py \
     --port "${MQTT_PORT}" \
     --user "${MQTT_USER}" \
     --password "${MQTT_PASSWORD}" \
+    --rtsp-url "rtsp://192.168.27.101:8554/360p" \
     --email-user ${EMAIL_USER} \
     --email-pass ${EMAIL_PASS} \
     --email-to ${EMAIL_TO} \

@@ -7,8 +7,13 @@ import time
 import paho.mqtt.client as mqtt
 import json
 import sys
+import os
+import subprocess  
 from threading import Thread
 import smtplib, ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 cv2.setNumThreads(1)
 
@@ -20,30 +25,66 @@ NOTIFICATION_COOLDOWN = 30 # Seconds
 
 def send_email_notification(args, confidence_score):
     """
-    Sends a plain text email notification. Runs in a separate thread.
+    Records a 3-second clip and emails it. Runs in a separate thread.
     """
-    print("INFO: [Email Thread] Starting text notification process...")
+    print("INFO: [Email Thread] Starting notification process...")
     try:
         camera_id = args.camera_id
-        
-        # 1. Build the Email
-        subject = f"Security Alert: Person Detected on {camera_id}"
-        confidence_percent = confidence_score * 100
-        body = f"A person was detected on camera '{camera_id}' with {confidence_percent:.0f}% confidence."
-        
-        message = f"Subject: {subject}\n\n{body}"
+        clip_path = f"/tmp/{camera_id}_clip.mp4"
 
-        # 2. Send the Email
+        # --- 1. Record 3-second clip ---
+        # We must record from the original RTSP stream
+        print(f"INFO: [Email Thread] Recording 3s clip from {args.rtsp_url}...")
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-rtsp_transport", "tcp",
+            "-i", args.rtsp_url,
+            "-t", "5",          # Record for 3 seconds
+            "-c:v", "copy",    # Copy video codec (fast)
+            "-an",             # No audio
+            "-y",              # Overwrite existing file
+            clip_path
+        ]
+        
+        result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=15)
+        
+        if not os.path.exists(clip_path):
+            print(f"ERROR: [Email Thread] Failed to create video clip. FFmpeg output:\n{result.stderr}", file=sys.stderr)
+            return
+
+        print(f"INFO: [Email Thread] Clip saved to {clip_path}")
+
+        # --- 2. Build the Email ---
+        msg = MIMEMultipart()
+        msg['From'] = args.email_user
+        msg['To'] = args.email_to
+        confidence_percent = confidence_score * 100
+        msg['Subject'] = f"Security Alert: Person Detected on {camera_id} ({confidence_percent:.0f}%)"
+        
+        # Attach the clip
+        with open(clip_path, "rb") as attachment:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename=detection_clip.mp4")
+        msg.attach(part)
+
+        # --- 3. Send the Email ---
         print("INFO: [Email Thread] Connecting to SMTP server...")
         context = ssl.create_default_context()
         with smtplib.SMTP(args.email_smtp_server, args.email_smtp_port) as server:
             server.starttls(context=context)
-            server.login(args.email_user, args.email_pass)
-            server.sendmail(args.email_to, args.email_to, message)
+            server.login(args.email_user, args.email_pass) 
+            server.sendmail(args.email_user, args.email_to, msg.as_string()) # Send from/to the same address
             print(f"INFO: [Email Thread] Email notification sent successfully to {args.email_to}")
 
     except Exception as e:
         print(f"ERROR: [Email Thread] Failed to send email: {e}", file=sys.stderr)
+    
+    finally:
+        # --- 4. Clean up the clip ---
+        if os.path.exists(clip_path):
+            os.remove(clip_path)
 
 def connect_mqtt(broker, port, user, password, camera_id):
     """Connects to the MQTT broker."""
