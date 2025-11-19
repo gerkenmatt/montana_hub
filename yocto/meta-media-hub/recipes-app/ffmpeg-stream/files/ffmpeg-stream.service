@@ -21,7 +21,8 @@ ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel info -nostdin \
   -i rtsp://192.168.27.100:8554/360p \
   -map 0:v:0 -c:v copy -an -bsf:v h264_mp4toannexb \
   -f mpegts -mpegts_flags +resend_headers -flush_packets 1 -muxpreload 0 -muxdelay 0 \
-  "tcp://0.0.0.0:9090?listen=1"
+  -f tee \
+  "[f=mpegts]tcp://0.0.0.0:9090?listen=1|[f=mpegts]tcp://0.0.0.0:9190?listen=1"
 
 [Install]
 WantedBy=multi-user.target

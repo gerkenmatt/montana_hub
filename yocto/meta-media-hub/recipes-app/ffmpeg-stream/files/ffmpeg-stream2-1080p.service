@@ -1,5 +1,5 @@
 [Unit]
-Description=Wyze Cam 2 (1080p) -> TCP 9191 (ffmpeg)
+Description=Wyze Cam 2 (1080p) -> TCP 9194 && 9194(ffmpeg)
 Requires=hostapd.service dnsmasq.service
 After=network-online.target hostapd.service dnsmasq.service wg-quick@wg0.service
 
@@ -20,9 +20,9 @@ ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel info -nostdin \
   -fflags +genpts+igndts+discardcorrupt -reorder_queue_size 0 \
   -i rtsp://192.168.27.101:8554/1080p \
   -map 0:v:0 -c:v copy -an -bsf:v h264_mp4toannexb \
-  -copyts -use_wallclock_as_timestamps 1 \
   -f mpegts -mpegts_flags +resend_headers -flush_packets 1 -muxpreload 0 -muxdelay 0 \
-  "tcp://0.0.0.0:9191?listen=1"
+  -f tee \
+  "[f=mpegts]udp://0.0.0.0:9094?pkt_size=1316|[f=mpegts]udp://0.0.0.0:9194?pkt_size=1316"
 
 [Install]
 WantedBy=multi-user.target

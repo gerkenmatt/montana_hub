@@ -1,5 +1,5 @@
 [Unit]
-Description=Wyze Cam 1 -> TCP 9090 (ffmpeg)
+Description=Wyze Cam 2 -> TCP 9091 && 9191 (ffmpeg)
 Requires=hostapd.service dnsmasq.service
 After=network-online.target hostapd.service dnsmasq.service wg-quick@wg0.service
 StartLimitIntervalSec=0
@@ -21,7 +21,8 @@ ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel info -nostdin \
   -i rtsp://192.168.27.101:8554/360p \
   -map 0:v:0 -c:v copy -an -bsf:v h264_mp4toannexb \
   -f mpegts -mpegts_flags +resend_headers -flush_packets 1 -muxpreload 0 -muxdelay 0 \
-  "tcp://0.0.0.0:9091?listen=1"
+  -f tee \
+  "[f=mpegts]tcp://0.0.0.0:9091?listen=1|[f=mpegts]tcp://0.0.0.0:9191?listen=1"
 
 [Install]
 WantedBy=multi-user.target
