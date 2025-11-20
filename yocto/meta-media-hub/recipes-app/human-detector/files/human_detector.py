@@ -22,6 +22,25 @@ DEFAULT_MODEL_PATH = "/usr/share/human-detector/"
 DEFAULT_CONF_THRESHOLD = 0.5
 DEFAULT_NMS_THRESHOLD = 0.4
 NOTIFICATION_COOLDOWN = 30 # Seconds
+MQTT_SETTINGS_TOPIC = "cabin/hub/settings"
+
+g_notifications_enabled = False # Default to OFF for safety
+
+def on_settings_message(client, userdata, msg):
+    """
+    Called when a new message is received on the settings topic.
+    """
+    global g_notifications_enabled
+    try:
+        payload = json.loads(msg.payload.decode())
+        status = payload.get("notifications", "off").lower()
+        
+        g_notifications_enabled = (status == "on")
+        
+        print(f"INFO: [Settings Update] Email notifications set to: {g_notifications_enabled}")
+            
+    except Exception as e:
+        print(f"ERROR: Could not parse settings message: {e}", file=sys.stderr)
 
 def send_email_notification(args, confidence_score):
     """
@@ -92,8 +111,14 @@ def connect_mqtt(broker, port, user, password, camera_id):
     client.username_pw_set(user, password)
     client.tls_set()
     
+    client.on_message = on_settings_message
+    
     try:
         client.connect(broker, port, 60)
+        
+        client.subscribe(MQTT_SETTINGS_TOPIC)
+        print(f"INFO: Subscribed to settings topic: {MQTT_SETTINGS_TOPIC}")
+        
         print(f"INFO: Successfully connected to MQTT broker at {broker}")
         client.loop_start()
         return client
@@ -213,10 +238,16 @@ def main(args, mqtt_client):
             # --- Email Notification Logic ---
             if current_detection_state:
                 if (current_time - last_notification_time) > NOTIFICATION_COOLDOWN:
-                    print(f"INFO: Cooldown expired. Triggering email notification thread...")
-                    last_notification_time = current_time 
-                    thread = Thread(target=send_email_notification, args=(args, max_confidence))
-                    thread.start()
+                    if g_notifications_enabled: 
+                        print(f"INFO: Cooldown expired and notifications ON. Triggering email thread...")
+                        last_notification_time = current_time
+                        thread = Thread(target=send_email_notification, args=(args, max_confidence))
+                        thread.start()
+                    else: 
+                        # This will stop the thread from starting, but we still reset the cooldown
+                        last_notification_time = current_time
+                        print(f"INFO: Person detected, but email notifications are OFF.")
+
 
         except KeyboardInterrupt:
             print("\nINFO: Exiting.")

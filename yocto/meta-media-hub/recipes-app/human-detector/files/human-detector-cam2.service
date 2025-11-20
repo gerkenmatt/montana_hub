@@ -1,7 +1,7 @@
 [Unit]
 Description=Human Detector Service (Camera 2)
-After=network-online.target ffmpeg-stream2.service
-Wants=network-online.target ffmpeg-stream2.service
+After=network-online.target ffmpeg-cam2-sd-local.service
+Wants=network-online.target ffmpeg-cam2-sd-local.service
 
 [Service]
 # Load credentials from the private environment file

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabin Security Hub</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 { color: white; margin-bottom: 30px; }
+        
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            justify-content: center;
+        }
+        
+        .camera-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 640px;
+        }
+
+        .video-container {
+            border: 1px solid #444;
+            background-color: #000;
+            height: 480px;
+        }
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .status-box {
+            padding: 20px 0;
+            font-size: 1.8em;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 8px;
+            text-transform: uppercase;
+            color: white;
+            transition: background-color 0.3s ease;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .status-box.clear { background-color: #28a745; } /* Green */
+        .status-box.detected { background-color: #dc3545; } /* Red */
+        
+        .status-box .confidence {
+            font-size: 0.6em;
+            font-weight: normal;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cabin Security Hub</h1>
+    
+    <div class="dashboard">
+        <div class="camera-card">
+            <h2>Camera 1 (Front Door)</h2>
+            <div class="video-container">
+                <img src="/video_feed_1" alt="Camera 1 Feed">
+            </div>
+            <div id="status-camera1" class="status-box clear">
+                Waiting for Status...
+            </div>
+        </div>
+
+        <div class="camera-card">
+            <h2>Camera 2 (Driveway)</h2>
+            <div class="video-container">
+                <img src="/video_feed_2" alt="Camera 2 Feed">
+            </div>
+            <div id="status-camera2" class="status-box clear">
+                Waiting for Status...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const ws = new WebSocket("ws://127.0.0.1:8000/ws");
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                // Determine which status box to update based on camera_id
+                // Expecting camera_id to be "camera1" or "camera2"
+                const statusPanel = document.getElementById(`status-${data.camera_id}`);
+                
+                if (statusPanel) {
+                    if (data.event === "person_detected") {
+                        let confidence = data.confidence || 0;
+                        statusPanel.className = "status-box detected";
+                        statusPanel.innerHTML = `🚨 HUMAN DETECTED 🚨
+                            <span class="confidence">Confidence: ${ (confidence * 100).toFixed(0) }%</span>`;
+                    } else if (data.event === "clear") {
+                        statusPanel.className = "status-box clear";
+                        statusPanel.innerHTML = "✅ STATUS: CLEAR";
+                    }
+                }
+            };
+
+            ws.onclose = function() {
+                console.log("WebSocket disconnected.");
+                document.querySelectorAll('.status-box').forEach(el => {
+                    el.className = "status-box detected";
+                    el.innerHTML = "Connection Lost";
+                });
+            };
+        });
+    </script>
+</body>
+</html>

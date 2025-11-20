@@ -7,26 +7,26 @@ from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
 
-# NEW IMPORTS for non-blocking keyboard input
+# (Imports are unchanged)
 import time
 import select
 import tty
 import termios
 
-# Initialize the rich console
 console = Console()
-
-# NEW: Global flag for "human status mode"
 human_status_mode = False
+
+# --- NEW: Define the settings topic ---
+SETTINGS_TOPIC = "cabin/hub/settings"
 
 def main():
     """
     Main function to run the interactive MQTT host control panel.
     """
-    global human_status_mode # Make the global flag accessible
+    global human_status_mode 
 
     parser = argparse.ArgumentParser(description="MQTT Host Control Panel")
-    # (Arguments are the same as before)
+    # (Arguments are unchanged)
     parser.add_argument("--broker", required=True, help="MQTT broker address")
     parser.add_argument("--port", type=int, default=8883, help="MQTT broker port (default: 8883)")
     parser.add_argument("--user", required=True, help="MQTT username")
@@ -46,28 +46,30 @@ def main():
         """Callback for when the client connects to the broker."""
         if rc == 0:
             console.print("Successfully connected to MQTT Broker!", style="bold green")
+            # This wildcard subscription already includes the settings topic
             client.subscribe(args.subscribe_topic)
             console.print(f"Subscribed to wildcard topic: {args.subscribe_topic}")
+            
             camera_topic = "cabin/camera/+/screenshot"
             client.subscribe(camera_topic)
             console.print(f"Subscribed to camera topic: {camera_topic}")
+            
             detection_topic = "cabin/camera/+/detection"
             client.subscribe(detection_topic)
             console.print(f"Subscribed to detection topic: {detection_topic}")
 
-            # --- NEW: Print the FIRST prompt here ---
+            # --- MODIFIED: Print the FIRST prompt ---
             if not human_status_mode:
-                print("\nEnter command (ping, reboot, screenshot <cam_id>, human, quit): ", end="", flush=True)
-            # --- END NEW ---
+                print("\nEnter command (ping, reboot, screenshot, human, email on/off, quit): ", end="", flush=True)
         else:
             console.print(f"Failed to connect, return code {rc}\n", style="bold red")
             sys.exit(1)
 
     def on_message(client, userdata, msg):
         """Callback for when a message is received from the broker."""
-        prompt = "\nEnter command (ping, reboot, screenshot <cam_id>, human, quit): "
+        prompt = "\nEnter command (ping, reboot, screenshot, human, email on/off, quit): "
         
-        # --- Handle incoming screenshots ---
+        # --- Handle incoming screenshots (unchanged) ---
         if msg.topic.startswith("cabin/camera/") and msg.topic.endswith("/screenshot"):
             if not human_status_mode: 
                 try:
@@ -80,38 +82,41 @@ def main():
                 except Exception as e:
                     console.print(f"\n[Error saving screenshot: {e}]", style="red")
                 finally:
-                    # --- MOVED HERE ---
                     print(prompt, end="", flush=True)
             
-        # --- Handle detection alerts ---
+        # --- Handle detection alerts (unchanged) ---
         elif msg.topic.startswith("cabin/camera/") and msg.topic.endswith("/detection"):
             if human_status_mode:
                 try:
                     camera_id = msg.topic.split('/')[2]
                     payload = json.loads(msg.payload.decode())
                     status_text = payload.get("event", payload.get("status", "UNKNOWN")).upper()
-                    print("status_text: " + status_text)
 
                     if "PERSON_DETECTED" in status_text or "HUMAN" in status_text:
-                        # Build panel content with confidence score
                         panel_content = f"[bold]Camera: {camera_id}[/bold]"
                         confidence_score = payload.get("confidence")
-                        if confidence_score is not None: 
-                            # Format it as a percentage
+                        if confidence_score is not None:
                             panel_content += f"\n[white]Confidence: {confidence_score*100:.0f}%[/white]"
-                        console.print(Panel(
-                            panel_content, 
-                            title = "HUMAN DETECTED", 
-                            style="bold red", 
-                            padding=(1, 4)
-                            ))
+                        console.print(Panel(panel_content, title="🚨 HUMAN DETECTED 🚨", style="bold red", padding=(1, 4)))
                     else: 
                         console.print(Panel(f"[bold]Camera: {camera_id}[/bold]", title=f"✅ STATUS: {status_text}", style="bold green", padding=(1, 4)))
                 except Exception as e:
                     console.print(f"\n[Error processing detection alert: {e}]", style="red")
-            # If not in human_status_mode, DO NOTHING (no prompt)
         
-        # --- Handle standard JSON status messages ---
+        # --- NEW: Handle settings updates ---
+        elif msg.topic == SETTINGS_TOPIC:
+            if not human_status_mode:
+                try:
+                    payload = json.loads(msg.payload.decode())
+                    status = payload.get("notifications", "off").upper()
+                    style = "bold green" if status == "ON" else "bold red"
+                    console.print(Panel(f"Email Notifications are now [bold]{status}[/bold]", title="⚙️ Setting Updated", style=style))
+                except Exception as e:
+                    console.print(f"Error processing settings message: {e}", style="red")
+                finally:
+                    print(prompt, end="", flush=True)
+
+        # --- Handle standard JSON status messages (unchanged) ---
         elif not human_status_mode:
             try:
                 payload = json.loads(msg.payload.decode())
@@ -119,12 +124,9 @@ def main():
             except json.JSONDecodeError:
                 console.print(f"\n[Received non-JSON message on topic {msg.topic}: {msg.payload.decode()}]", style="yellow")
             finally:
-                # --- MOVED HERE ---
                 print(prompt, end="", flush=True)
-        
-        # --- REMOVED prompt printing from here ---
 
-    # --- Client Setup (no changes) ---
+    # --- Client Setup (unchanged) ---
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "host-control-panel")
     client.username_pw_set(args.user, args.password)
     client.tls_set()
@@ -145,18 +147,17 @@ def main():
     
     try:
         while True:
-            # The prompt is now printed by on_connect or on_message
-            command_input = input() # No prompt string here
+            command_input = input() # No prompt string
             
             parts = command_input.lower().strip().split()
             
             if not parts:
-                # User just hit Enter, print a new prompt
                 if not human_status_mode:
-                    print("\nEnter command (ping, reboot, screenshot <cam_id>, human, quit): ", end="", flush=True)
+                    print("\nEnter command (ping, reboot, screenshot, human, email on/off, quit): ", end="", flush=True)
                 continue
                 
             command = parts[0]
+            command_full = " ".join(parts) # Get the full command string
             
             if command == "ping":
                 console.print("Sending 'ping' command...", style="yellow")
@@ -177,47 +178,49 @@ def main():
                 else:
                     console.print("Usage: screenshot <camera_id>", style="red")
             
-            # --- HUMAN STATUS MODE ---
+            # --- NEW: Email Commands ---
+            elif command_full == "email on":
+                console.print("Turning email notifications ON...", style="yellow")
+                payload = json.dumps({"notifications": "on"})
+                client.publish(SETTINGS_TOPIC, payload, qos=1, retain=True)
+
+            elif command_full == "email off":
+                console.print("Turning email notifications OFF...", style="yellow")
+                payload = json.dumps({"notifications": "off"})
+                client.publish(SETTINGS_TOPIC, payload, qos=1, retain=True)
+
+            # --- Human Mode (unchanged) ---
             elif command == "human":
                 human_status_mode = True
                 console.print(Panel("Entering Human Detection Mode. Press 'q' to quit.", style="bold cyan"))
                 
-                # Save old terminal settings
                 fd = sys.stdin.fileno()
                 old_settings = termios.tcgetattr(fd)
                 try:
-                    # Set terminal to "cbreak" mode to read single chars
                     tty.setcbreak(sys.stdin.fileno())
-                    
-                    # This is the "human mode" non-blocking loop
                     while human_status_mode:
-                        # Check if a key is pressed (timeout of 0.1s)
                         if select.select([sys.stdin], [], [], 0.1)[0]:
                             key = sys.stdin.read(1)
                             if key.lower() == 'q':
-                                human_status_mode = False # Signal loop to exit
-                        # Let the MQTT thread do its work
+                                human_status_mode = False 
                         time.sleep(0.05) 
-                
                 finally:
-                    # Always restore terminal settings
                     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
                 
                 console.print(Panel("Exiting Human Detection Mode.", style="bold cyan"))
-                # Print a new prompt after exiting human mode
-                print("\nEnter command (ping, reboot, screenshot <cam_id>, human, quit): ", end="", flush=True)
+                print("\nEnter command (ping, reboot, screenshot, human, email on/off, quit): ", end="", flush=True)
 
             elif command == "quit":
                 console.print("Exiting...", style="bold")
                 break
             
             else:
-                console.print("Unknown command. Please use 'ping', 'reboot', 'screenshot <cam_id>', 'human', or 'quit'.", style="red")
+                console.print("Unknown command. Please use 'ping', 'reboot', 'screenshot', 'human', 'email on/off', or 'quit'.", style="red")
 
     except KeyboardInterrupt:
         console.print("\nExiting...", style="bold")
     finally:
-        human_status_mode = True # Stop prompts from printing during shutdown
+        human_status_mode = True 
         client.loop_stop()
         client.disconnect()
         console.print("Disconnected from broker.", style="bold")
