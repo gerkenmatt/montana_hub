@@ -8,6 +8,7 @@ RDEPENDS:${PN} = " \
     python3-opencv \
     python3-numpy \
     python3-paho-mqtt \
+    python3-requests \
 "
 
 # List all the files we are installing

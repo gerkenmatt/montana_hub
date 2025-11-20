@@ -9,7 +9,7 @@ EnvironmentFile=/etc/detector.env
 
 # Use the variables from the file
 ExecStart=/usr/bin/python3 -u /usr/bin/human_detector.py \
-    --stream "tcp://127.0.0.1:9091" \
+    --stream "udp://127.0.0.1:9091" \
     --camera-id "camera2" \
     --broker "${MQTT_BROKER}" \
     --port "${MQTT_PORT}" \

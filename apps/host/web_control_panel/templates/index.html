@@ -5,211 +5,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cabin Security Hub</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-        h1 { color: white; margin-bottom: 30px; }
+        body { font-family: sans-serif; background-color: #121212; color: #e0e0e0; text-align: center; }
+        .dashboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
+        .camera-card { width: 640px; }
+        .video-container { border: 1px solid #444; background: #000; height: 480px; }
+        img { width: 100%; height: 100%; object-fit: contain; }
+        .status-box { padding: 20px; font-size: 1.5em; font-weight: bold; border-radius: 8px; margin-top: 10px; }
+        .clear { background-color: #28a745; }
+        .detected { background-color: #dc3545; }
         
-        .dashboard {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 40px;
-            justify-content: center;
-        }
+        /* History Grid */
+        .history-section { margin: 40px auto; width: 90%; max-width: 1300px; }
+        .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .event-card { background: #222; border: 1px solid #444; border-radius: 8px; overflow: hidden; }
+        .event-header { padding: 8px; background: #333; display: flex; justify-content: space-between; }
+        .event-badge { background: #dc3545; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
+        .event-video video { width: 100%; display: block; }
+        .event-footer { padding: 8px; font-size: 0.85em; color: #aaa; text-align: right; }
         
-        .camera-card {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 640px;
-        }
-
-        .video-container {
-            border: 1px solid #444;
-            background-color: #000;
-            height: 480px;
-        }
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .status-box {
-            padding: 20px 0;
-            font-size: 1.8em;
-            font-weight: bold;
-            text-align: center;
-            border-radius: 8px;
-            text-transform: uppercase;
-            color: white;
-            transition: background-color 0.3s ease;
-            min-height: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .status-box.clear { background-color: #28a745; }
-        .status-box.detected { background-color: #dc3545; }
-        .status-box .confidence {
-            font-size: 0.6em;
-            font-weight: normal;
-            margin-top: 5px;
-        }
-
-        /* --- CONTROLS SECTION --- */
-        .controls-section {
-            margin-top: 50px;
-            padding: 20px;
-            background-color: #1e1e1e;
-            border-radius: 10px;
-            width: 500px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid #333;
-        }
-        .control-label {
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        /* The Toggle Switch UI */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
+        /* Switch */
+        .controls { margin-top: 20px; padding: 20px; background: #1e1e1e; display: inline-flex; gap: 20px; border-radius: 10px; align-items: center;}
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            -webkit-transition: .4s;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #2196F3;
-        }
-        input:focus + .slider {
-            box-shadow: 0 0 1px #2196F3;
-        }
-        input:checked + .slider:before {
-            -webkit-transform: translateX(26px);
-            -ms-transform: translateX(26px);
-            transform: translateX(26px);
-        }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .4s; }
+        input:checked + .slider { background-color: #2196F3; }
+        input:checked + .slider:before { transform: translateX(22px); }
     </style>
 </head>
 <body>
     <h1>Cabin Security Hub</h1>
-    
     <div class="dashboard">
         <div class="camera-card">
-            <h2>Camera 1 (Front Door)</h2>
-            <div class="video-container">
-                <img src="/video_feed_1" alt="Camera 1 Feed">
-            </div>
-            <div id="status-camera1" class="status-box clear">
-                Waiting for Status...
-            </div>
+            <h3>Front Door</h3>
+            <div class="video-container"><img src="/video_feed_1"></div>
+            <div id="status-camera1" class="status-box clear">Connecting...</div>
         </div>
-
         <div class="camera-card">
-            <h2>Camera 2 (Driveway)</h2>
-            <div class="video-container">
-                <img src="/video_feed_2" alt="Camera 2 Feed">
-            </div>
-            <div id="status-camera2" class="status-box clear">
-                Waiting for Status...
-            </div>
+            <h3>Driveway</h3>
+            <div class="video-container"><img src="/video_feed_2"></div>
+            <div id="status-camera2" class="status-box clear">Connecting...</div>
         </div>
     </div>
 
-    <div class="controls-section">
-        <div class="control-label">Email Notifications</div>
+    <div class="controls">
+        <span>Email Notifications</span>
         <label class="switch">
             <input type="checkbox" id="email-toggle">
             <span class="slider"></span>
         </label>
     </div>
 
+    <div class="history-section">
+        <h2>Event History (Cloud Storage)</h2>
+        <div id="history-container" class="history-grid"></div>
+    </div>
+
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // --- WebSocket Logic (Unchanged) ---
-            const ws = new WebSocket("ws://127.0.0.1:8000/ws");
+        function createEventCard(event) {
+            const div = document.createElement('div');
+            div.className = 'event-card';
+            div.innerHTML = `
+                <div class="event-header">
+                    <strong>${event.camera_id}</strong>
+                    <span class="event-badge">${(event.confidence * 100).toFixed(0)}%</span>
+                </div>
+                <div class="event-video">
+                    <video controls preload="none"><source src="${event.video_url}" type="video/mp4"></video>
+                </div>
+                <div class="event-footer">${event.date_string}</div>
+            `;
+            return div;
+        }
 
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                const statusPanel = document.getElementById(`status-${data.camera_id}`);
-                
-                if (statusPanel) {
-                    if (data.event === "person_detected") {
-                        let confidence = data.confidence || 0;
-                        statusPanel.className = "status-box detected";
-                        statusPanel.innerHTML = `🚨 HUMAN DETECTED 🚨
-                            <span class="confidence">Confidence: ${ (confidence * 100).toFixed(0) }%</span>`;
-                    } else if (data.event === "clear") {
-                        statusPanel.className = "status-box clear";
-                        statusPanel.innerHTML = "✅ STATUS: CLEAR";
-                    }
-                }
-            };
+        // Fetch history from VPS
+        fetch('http://10.0.0.1:8080/api/history')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('history-container');
+                data.forEach(e => container.appendChild(createEventCard(e)));
+            });
 
-            ws.onclose = function() {
-                console.log("WebSocket disconnected.");
-                document.querySelectorAll('.status-box').forEach(el => {
+        // WebSocket & Toggles
+        const ws = new WebSocket("ws://" + location.host + "/ws");
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            const el = document.getElementById(`status-${data.camera_id}`);
+            if(el) {
+                if(data.event === "person_detected") {
                     el.className = "status-box detected";
-                    el.innerHTML = "Connection Lost";
-                });
-            };
-
-            // --- NEW: Toggle Switch Logic ---
-            const emailToggle = document.getElementById('email-toggle');
-
-            emailToggle.addEventListener('change', function() {
-                console.log("Toggling email notifications:", this.checked);
-                
-                // Send API Request to Backend
-                fetch('/api/settings/email', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        enabled: this.checked
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Success:', data);
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                    // Revert switch if failed
-                    this.checked = !this.checked;
-                });
+                    el.innerText = `HUMAN DETECTED (${(data.confidence*100).toFixed(0)}%)`;
+                } else if(data.event === "clear") {
+                    el.className = "status-box clear";
+                    el.innerText = "STATUS: CLEAR";
+                }
+            }
+        };
+        
+        document.getElementById('email-toggle').addEventListener('change', function() {
+            fetch('/api/settings/email', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: this.checked})
             });
         });
     </script>
