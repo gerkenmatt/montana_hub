@@ -73,6 +73,37 @@ async def get_history():
     with open(HISTORY_FILE, 'r') as f:
         return json.load(f)
 
+@app.delete("/api/delete/{camera_id}/{timestamp}")
+async def delete_event(camera_id: str, timestamp: float):
+    """Deletes a clip file and its history entry."""
+    try:
+        # 1. Reconstruct the filename
+        filename = f"{camera_id}_{int(float(timestamp))}.mp4"
+        file_path = os.path.join(CLIP_DIR, filename)
+
+        # 2. Delete the file from disk
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Deleted file: {filename}")
+        else:
+            print(f"File not found (might have been deleted already): {filename}")
+
+        # 3. Remove from History JSON
+        with open(HISTORY_FILE, 'r') as f:
+            history = json.load(f)
+
+        # Filter out the item with the matching timestamp and camera_id
+        # We use a list comprehension to keep everything THAT DOES NOT MATCH
+        history = [h for h in history if not (h['timestamp'] == timestamp and h['camera_id'] == camera_id)]
+
+        with open(HISTORY_FILE, 'w') as f:
+            json.dump(history, f)
+
+        return {"status": "success"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 if __name__ == "__main__":
     # Listen on the WireGuard Interface IP (10.0.0.1)
     uvicorn.run(app, host="10.0.0.1", port=8080)
