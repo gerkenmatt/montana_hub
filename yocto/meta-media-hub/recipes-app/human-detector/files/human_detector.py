@@ -28,16 +28,27 @@ MQTT_SETTINGS_TOPIC = "cabin/hub/settings"
 # VPS Storage Endpoint (Use the VPN IP of my VPS)
 VPS_UPLOAD_URL = "http://10.0.0.1:8080/api/upload"
 
-g_notifications_enabled = False 
+g_notifications_enabled = False     # Default Email OFF
+g_upload_enabled = True             # Default Upload ON
 
 def on_settings_message(client, userdata, msg):
     """Called when a new message is received on the settings topic."""
-    global g_notifications_enabled
+    global g_notifications_enabled, g_upload_enabled
     try:
         payload = json.loads(msg.payload.decode())
-        status = payload.get("notifications", "off").lower()
-        g_notifications_enabled = (status == "on")
-        print(f"INFO: [Settings Update] Email notifications set to: {g_notifications_enabled}")
+        print(f"INFO: [Settings Received] {payload}")
+
+        # Only update if the key exists in the payload
+        if "notifications" in payload:
+            status = payload["notifications"].lower()
+            g_notifications_enabled = (status == "on")
+            print(f"   > Email Notifications set to: {g_notifications_enabled}")
+            
+        if "upload" in payload:
+            status = payload["upload"].lower()
+            g_upload_enabled = (status == "on")
+            print(f"   > Cloud Upload set to: {g_upload_enabled}")
+
     except Exception as e:
         print(f"ERROR: Could not parse settings message: {e}", file=sys.stderr)
 
@@ -69,25 +80,27 @@ def send_notification_thread(args, confidence_score):
         print(f"INFO: [Notify Thread] Clip saved to {clip_path}")
 
         # --- 2. Upload to VPS (Cloud NVR) ---
-        # This happens EVERY time a person is detected, ensuring history is saved.
-        print(f"INFO: [Notify Thread] Uploading to {VPS_UPLOAD_URL}...")
-        try:
-            with open(clip_path, 'rb') as f:
-                files = {'file': (f'{camera_id}_clip.mp4', f, 'video/mp4')}
-                data = {
-                    'camera_id': camera_id,
-                    'confidence': str(confidence_score),
-                    'timestamp': str(time.time())
-                }
-                # 10 second timeout so we don't hang if VPS is down
-                r = requests.post(VPS_UPLOAD_URL, files=files, data=data, timeout=10)
-                
-                if r.status_code == 200:
-                    print(f"INFO: [Notify Thread] VPS Upload Successful.")
-                else:
-                    print(f"ERROR: [Notify Thread] VPS Upload failed: {r.status_code} - {r.text}")
-        except Exception as e:
-            print(f"ERROR: [Notify Thread] Could not upload to VPS (Server might be down): {e}")
+        if g_upload_enabled:
+            print(f"INFO: [Notify Thread] Uploading to {VPS_UPLOAD_URL}...")
+            try:
+                with open(clip_path, 'rb') as f:
+                    files = {'file': (f'{camera_id}_clip.mp4', f, 'video/mp4')}
+                    data = {
+                        'camera_id': camera_id,
+                        'confidence': str(confidence_score),
+                        'timestamp': str(time.time())
+                    }
+                    # 10 second timeout so we don't hang if VPS is down
+                    r = requests.post(VPS_UPLOAD_URL, files=files, data=data, timeout=10)
+                    
+                    if r.status_code == 200:
+                        print(f"INFO: [Notify Thread] VPS Upload Successful.")
+                    else:
+                        print(f"ERROR: [Notify Thread] VPS Upload failed: {r.status_code} - {r.text}")
+            except Exception as e:
+                print(f"ERROR: [Notify Thread] Could not upload to VPS (Server might be down): {e}")
+        else: 
+            print("INFO: [Notify Thread] VPS Upload skipped (Switch is OFF).")
 
         # --- 3. Send Email (Only if enabled) ---
         if g_notifications_enabled:

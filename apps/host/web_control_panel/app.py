@@ -70,6 +70,9 @@ cam2.daemon = True; cam2.start()
 class EmailSetting(BaseModel):
     enabled: bool
 
+class UploadSetting(BaseModel):
+    enabled: bool
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode('utf-8'))
@@ -97,6 +100,17 @@ async def set_email(setting: EmailSetting):
         mqtt_client.publish(MQTT_SETTINGS_TOPIC, json.dumps({"notifications": state}), qos=1, retain=True)
         return {"status": "success"}
     return {"status": "error"}
+
+@app.post("/api/settings/upload")
+async def set_upload(setting: UploadSetting):
+    if mqtt_client:
+        state = "on" if setting.enabled else "off"
+        # We send only the "upload" key
+        payload = json.dumps({"upload": state})
+        mqtt_client.publish(MQTT_SETTINGS_TOPIC, payload, qos=1, retain=True)
+        print(f"Command Sent: Cloud Upload {state.upper()}")
+        return {"status": "success", "state": state}
+    return {"status": "error", "message": "MQTT not connected"}
 
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket):
