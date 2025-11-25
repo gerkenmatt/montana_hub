@@ -1,0 +1,22 @@
+[Unit]
+Description=FFmpeg Streamer: %i
+Requires=hostapd.service dnsmasq.service
+After=network-online.target hostapd.service dnsmasq.service wg-quick@wg0.service
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Type=simple
+SuccessExitStatus=SIGPIPE 141
+Restart=always
+RestartSec=1
+KillSignal=SIGINT
+TimeoutStopSec=5
+NoNewPrivileges=yes
+Environment=FFREPORT=file=/var/log/ffmpeg_%i.log:level=32
+
+# The script handles the logic, passing %i (e.g., cam1-hd-local) as the argument
+ExecStart=/usr/bin/ffmpeg-streamer.sh %i
+
+[Install]
+WantedBy=multi-user.target
