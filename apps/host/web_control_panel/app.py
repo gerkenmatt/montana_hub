@@ -1,4 +1,5 @@
 # app.py
+
 import cv2
 import uvicorn
 import paho.mqtt.client as mqtt
@@ -21,9 +22,15 @@ MQTT_PASS = "nixon1001"
 MQTT_STATUS_TOPIC = "cabin/camera/+/detection"
 MQTT_SETTINGS_TOPIC = "cabin/hub/settings"
 
-# Live Video comes DIRECTLY from Pi (via VPN)
-PI_VIDEO_URL_1 = "tcp://10.0.0.2:9192" 
-PI_VIDEO_URL_2 = "tcp://10.0.0.2:9193" 
+# --- NEW: Define all 4 Streams ---
+# Camera 1 (Front Door)
+URL_CAM1_SD = "tcp://10.0.0.2:9190"
+URL_CAM1_HD = "tcp://10.0.0.2:9192"
+
+# Camera 2 (Driveway)
+URL_CAM2_SD = "tcp://10.0.0.2:9191"
+URL_CAM2_HD = "tcp://10.0.0.2:9193"
+# ---------------------
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -38,6 +45,8 @@ class VideoCamera(threading.Thread):
         self.current_frame = None
         self.running = True
         self.lock = threading.Lock()
+        
+        # Placeholder image
         self.placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.putText(self.placeholder, "Connecting...", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
         _, buf = cv2.imencode('.jpg', self.placeholder)
@@ -61,12 +70,21 @@ class VideoCamera(threading.Thread):
     def get_frame(self):
         with self.lock: return self.current_frame
 
-cam1 = VideoCamera(PI_VIDEO_URL_1)
-cam1.daemon = True; cam1.start()
-cam2 = VideoCamera(PI_VIDEO_URL_2)
-cam2.daemon = True; cam2.start()
+# --- NEW: Instantiate 4 Cameras ---
+# We keep connections open to all 4 to prevent "Connection Refused" lag
+cam1_sd = VideoCamera(URL_CAM1_SD)
+cam1_sd.daemon = True; cam1_sd.start()
 
-# --- MQTT & API ---
+cam1_hd = VideoCamera(URL_CAM1_HD)
+cam1_hd.daemon = True; cam1_hd.start()
+
+cam2_sd = VideoCamera(URL_CAM2_SD)
+cam2_sd.daemon = True; cam2_sd.start()
+
+cam2_hd = VideoCamera(URL_CAM2_HD)
+cam2_hd.daemon = True; cam2_hd.start()
+
+# --- MQTT Logic (Unchanged) ---
 class EmailSetting(BaseModel):
     enabled: bool
 
@@ -105,12 +123,9 @@ async def set_email(setting: EmailSetting):
 async def set_upload(setting: UploadSetting):
     if mqtt_client:
         state = "on" if setting.enabled else "off"
-        # We send only the "upload" key
-        payload = json.dumps({"upload": state})
-        mqtt_client.publish(MQTT_SETTINGS_TOPIC, payload, qos=1, retain=True)
-        print(f"Command Sent: Cloud Upload {state.upper()}")
-        return {"status": "success", "state": state}
-    return {"status": "error", "message": "MQTT not connected"}
+        mqtt_client.publish(MQTT_SETTINGS_TOPIC, json.dumps({"upload": state}), qos=1, retain=True)
+        return {"status": "success"}
+    return {"status": "error"}
 
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket):
@@ -120,16 +135,24 @@ async def ws_endpoint(websocket: WebSocket):
             await websocket.send_text(await queue.get())
     except WebSocketDisconnect: pass
 
+# --- Video Stream Generator ---
 async def gen_frames(camera):
     while True:
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + camera.get_frame() + b'\r\n')
         await asyncio.sleep(0.05)
 
-@app.get("/video_feed_1")
-async def feed1(): return StreamingResponse(gen_frames(cam1), media_type="multipart/x-mixed-replace; boundary=frame")
+# --- NEW: 4 Distinct Endpoints ---
+@app.get("/feed/cam1/sd")
+async def feed1_sd(): return StreamingResponse(gen_frames(cam1_sd), media_type="multipart/x-mixed-replace; boundary=frame")
 
-@app.get("/video_feed_2")
-async def feed2(): return StreamingResponse(gen_frames(cam2), media_type="multipart/x-mixed-replace; boundary=frame")
+@app.get("/feed/cam1/hd")
+async def feed1_hd(): return StreamingResponse(gen_frames(cam1_hd), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@app.get("/feed/cam2/sd")
+async def feed2_sd(): return StreamingResponse(gen_frames(cam2_sd), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@app.get("/feed/cam2/hd")
+async def feed2_hd(): return StreamingResponse(gen_frames(cam2_hd), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request): return templates.TemplateResponse("index.html", {"request": request})
