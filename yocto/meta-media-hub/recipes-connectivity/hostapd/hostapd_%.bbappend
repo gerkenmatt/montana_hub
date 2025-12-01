@@ -10,5 +10,5 @@ do_install:append() {
     install -m 0600 ${WORKDIR}/hostapd.conf ${D}${sysconfdir}/hostapd.conf
 }
 
-# Add the file to the package (this was the missing piece)
+# Add the file to the package
 FILES:${PN} += "${sysconfdir}/hostapd.conf"

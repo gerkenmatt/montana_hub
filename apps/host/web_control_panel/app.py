@@ -19,10 +19,12 @@ MQTT_BROKER = "montanaiothub.cloud"
 MQTT_PORT = 8883
 MQTT_USER = "montana_mqtt_hub"
 MQTT_PASS = "nixon1001"
-MQTT_STATUS_TOPIC = "cabin/camera/+/detection"
+MQTT_STATUS_TOPIC = "cabin/hub/status" # <-- UPDATED: Listen to status topic for telemetry
+MQTT_DETECTION_TOPIC = "cabin/camera/+/detection"
 MQTT_SETTINGS_TOPIC = "cabin/hub/settings"
+MQTT_COMMAND_TOPIC = "cabin/hub/command"
 
-# --- NEW: Define all 4 Streams ---
+# --- Define all 4 Streams ---
 # Camera 1 (Front Door)
 URL_CAM1_SD = "tcp://10.0.0.2:9190"
 URL_CAM1_HD = "tcp://10.0.0.2:9192"
@@ -37,7 +39,7 @@ templates = Jinja2Templates(directory="templates")
 queue = asyncio.Queue()
 mqtt_client = None
 
-# --- Video Camera Class (Persistent Connection) ---
+# --- Video Camera Class ---
 class VideoCamera(threading.Thread):
     def __init__(self, url):
         threading.Thread.__init__(self)
@@ -45,8 +47,6 @@ class VideoCamera(threading.Thread):
         self.current_frame = None
         self.running = True
         self.lock = threading.Lock()
-        
-        # Placeholder image
         self.placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.putText(self.placeholder, "Connecting...", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
         _, buf = cv2.imencode('.jpg', self.placeholder)
@@ -70,33 +70,41 @@ class VideoCamera(threading.Thread):
     def get_frame(self):
         with self.lock: return self.current_frame
 
-# --- NEW: Instantiate 4 Cameras ---
-# We keep connections open to all 4 to prevent "Connection Refused" lag
-cam1_sd = VideoCamera(URL_CAM1_SD)
-cam1_sd.daemon = True; cam1_sd.start()
+# Start Cameras
+cam1_sd = VideoCamera(URL_CAM1_SD); cam1_sd.daemon = True; cam1_sd.start()
+cam1_hd = VideoCamera(URL_CAM1_HD); cam1_hd.daemon = True; cam1_hd.start()
+cam2_sd = VideoCamera(URL_CAM2_SD); cam2_sd.daemon = True; cam2_sd.start()
+cam2_hd = VideoCamera(URL_CAM2_HD); cam2_hd.daemon = True; cam2_hd.start()
 
-cam1_hd = VideoCamera(URL_CAM1_HD)
-cam1_hd.daemon = True; cam1_hd.start()
-
-cam2_sd = VideoCamera(URL_CAM2_SD)
-cam2_sd.daemon = True; cam2_sd.start()
-
-cam2_hd = VideoCamera(URL_CAM2_HD)
-cam2_hd.daemon = True; cam2_hd.start()
-
-# --- MQTT Logic (Unchanged) ---
+# --- MQTT Logic ---
 class EmailSetting(BaseModel):
     enabled: bool
 
 class UploadSetting(BaseModel):
     enabled: bool
 
+def on_connect(client, userdata, flags, rc, properties=None):
+    print("Connected to MQTT Broker!")
+    client.subscribe(MQTT_STATUS_TOPIC)    # Subscribe to Telemetry
+    client.subscribe(MQTT_DETECTION_TOPIC) # Subscribe to Detection
+    print(f"Subscribed to {MQTT_STATUS_TOPIC} and {MQTT_DETECTION_TOPIC}")
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode('utf-8'))
-        payload['camera_id'] = msg.topic.split('/')[2]
+        
+        # Handle Detection Messages
+        if "camera" in msg.topic:
+            payload['type'] = 'detection'
+            payload['camera_id'] = msg.topic.split('/')[2]
+        
+        # Handle Telemetry/Status Messages
+        elif "status" in msg.topic:
+            payload['type'] = 'telemetry'
+
         queue.put_nowait(json.dumps(payload))
-    except: pass
+    except Exception as e: 
+        print(f"Error processing message: {e}")
 
 @app.on_event("startup")
 def start_mqtt():
@@ -104,13 +112,14 @@ def start_mqtt():
     mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "web-control")
     mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
     mqtt_client.tls_set()
+    mqtt_client.on_connect = on_connect # Bind on_connect
     mqtt_client.on_message = on_message
     try:
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        mqtt_client.subscribe(MQTT_STATUS_TOPIC)
         mqtt_client.loop_start()
     except: pass
 
+# --- API Endpoints ---
 @app.post("/api/settings/email")
 async def set_email(setting: EmailSetting):
     if mqtt_client:
@@ -127,6 +136,13 @@ async def set_upload(setting: UploadSetting):
         return {"status": "success"}
     return {"status": "error"}
 
+@app.post("/api/system/reboot")
+async def reboot_system():
+    if mqtt_client:
+        mqtt_client.publish(MQTT_COMMAND_TOPIC, json.dumps({"action": "reboot"}), qos=1)
+        return {"status": "success"}
+    return {"status": "error"}
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -135,22 +151,18 @@ async def ws_endpoint(websocket: WebSocket):
             await websocket.send_text(await queue.get())
     except WebSocketDisconnect: pass
 
-# --- Video Stream Generator ---
+# --- Video Streams ---
 async def gen_frames(camera):
     while True:
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + camera.get_frame() + b'\r\n')
         await asyncio.sleep(0.05)
 
-# --- NEW: 4 Distinct Endpoints ---
 @app.get("/feed/cam1/sd")
 async def feed1_sd(): return StreamingResponse(gen_frames(cam1_sd), media_type="multipart/x-mixed-replace; boundary=frame")
-
 @app.get("/feed/cam1/hd")
 async def feed1_hd(): return StreamingResponse(gen_frames(cam1_hd), media_type="multipart/x-mixed-replace; boundary=frame")
-
 @app.get("/feed/cam2/sd")
 async def feed2_sd(): return StreamingResponse(gen_frames(cam2_sd), media_type="multipart/x-mixed-replace; boundary=frame")
-
 @app.get("/feed/cam2/hd")
 async def feed2_hd(): return StreamingResponse(gen_frames(cam2_hd), media_type="multipart/x-mixed-replace; boundary=frame")
 

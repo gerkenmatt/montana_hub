@@ -5,45 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cabin Security Hub</title>
     <style>
-        body { font-family: sans-serif; background-color: #121212; color: #e0e0e0; text-align: center; }
+        body { font-family: sans-serif; background-color: #121212; color: #e0e0e0; text-align: center; padding-bottom: 50px; }
+        
+        /* Telemetry Bar */
+        .stats-container {
+            display: flex;
+            gap: 30px;
+            background: #222;
+            padding: 15px 40px;
+            border-radius: 50px;
+            margin-bottom: 30px;
+            border: 1px solid #444;
+            justify-content: center;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .stat-item { font-weight: bold; color: #888; font-size: 1rem; }
+        .stat-value { color: #fff; font-size: 1.2rem; margin-left: 5px; }
+        .stat-value.alert { color: #dc3545; }
+
         .dashboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
         .camera-card { width: 640px; display: flex; flex-direction: column; gap: 10px; }
         .video-container { border: 1px solid #444; background: #000; height: 480px; position: relative; }
         img { width: 100%; height: 100%; object-fit: contain; }
         
-        /* Status Box */
         .status-box { padding: 15px; font-size: 1.5em; font-weight: bold; border-radius: 8px; }
         .clear { background-color: #28a745; }
         .detected { background-color: #dc3545; }
 
-        /* Quality Toggle Buttons */
         .quality-controls {
-            display: flex;
-            justify-content: center;
-            gap: 0;
-            background: #333;
-            border-radius: 20px;
-            width: fit-content;
-            margin: 0 auto;
-            overflow: hidden;
-            border: 1px solid #555;
+            display: flex; justify-content: center; gap: 0; background: #333; border-radius: 20px;
+            width: fit-content; margin: 0 auto; overflow: hidden; border: 1px solid #555;
         }
-        .q-btn {
-            background: none;
-            border: none;
-            color: #aaa;
-            padding: 8px 20px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        .q-btn.active {
-            background-color: #2196F3;
-            color: white;
-        }
+        .q-btn { background: none; border: none; color: #aaa; padding: 8px 20px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .q-btn.active { background-color: #2196F3; color: white; }
         
-        /* Controls & History (Same as before) */
-        .controls { margin-top: 30px; padding: 20px; background: #1e1e1e; display: inline-flex; gap: 30px; border-radius: 10px; align-items: center;}
+        .controls { margin-top: 30px; padding: 20px; background: #1e1e1e; display: inline-flex; gap: 30px; border-radius: 10px; align-items: center; border: 1px solid #333;}
         .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px; transition: .4s; }
@@ -64,37 +62,40 @@
         .action-btn:hover { background-color: #333; color: white; }
         .btn-download:hover { color: #2196F3; }
         .btn-delete:hover { color: #dc3545; }
+
+        /* Reboot Button */
+        .danger-zone { margin-top: 40px; }
+        .btn-reboot { background-color: #3a1c1c; color: #ff6b6b; border: 1px solid #dc3545; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-reboot:hover { background-color: #dc3545; color: white; }
     </style>
 </head>
 <body>
     <h1>Cabin Security Hub</h1>
     
+    <div class="stats-container">
+        <div class="stat-item">CPU: <span id="stat-cpu" class="stat-value">--</span>%</div>
+        <div class="stat-item">RAM: <span id="stat-ram" class="stat-value">--</span>%</div>
+        <div class="stat-item">TEMP: <span id="stat-temp" class="stat-value">--</span>°C</div>
+        <div class="stat-item">DISK: <span id="stat-disk" class="stat-value">--</span>%</div>
+    </div>
+
     <div class="dashboard">
         <div class="camera-card">
             <h3>Front Door</h3>
-            <div class="video-container">
-                <img id="vid-cam1" src="/feed/cam1/sd">
-            </div>
-            
+            <div class="video-container"><img id="vid-cam1" src="/feed/cam1/sd"></div>
             <div class="quality-controls">
-                <button class="q-btn active" onclick="setQuality(1, 'sd', this)">SD (360p)</button>
-                <button class="q-btn" onclick="setQuality(1, 'hd', this)">HD (1080p)</button>
+                <button class="q-btn active" onclick="setQuality(1, 'sd', this)">SD</button>
+                <button class="q-btn" onclick="setQuality(1, 'hd', this)">HD</button>
             </div>
-
             <div id="status-camera1" class="status-box clear">Connecting...</div>
         </div>
-
         <div class="camera-card">
             <h3>Driveway</h3>
-            <div class="video-container">
-                <img id="vid-cam2" src="/feed/cam2/sd">
-            </div>
-
+            <div class="video-container"><img id="vid-cam2" src="/feed/cam2/sd"></div>
             <div class="quality-controls">
-                <button class="q-btn active" onclick="setQuality(2, 'sd', this)">SD (360p)</button>
-                <button class="q-btn" onclick="setQuality(2, 'hd', this)">HD (1080p)</button>
+                <button class="q-btn active" onclick="setQuality(2, 'sd', this)">SD</button>
+                <button class="q-btn" onclick="setQuality(2, 'hd', this)">HD</button>
             </div>
-
             <div id="status-camera2" class="status-box clear">Connecting...</div>
         </div>
     </div>
@@ -115,26 +116,29 @@
         <h2>🚨 Event History</h2>
         <div id="history-container" class="history-grid"></div>
     </div>
+    
+    <div class="danger-zone">
+        <button class="btn-reboot" onclick="rebootSystem()">⚠️ REBOOT REMOTE PI</button>
+    </div>
 
     <script>
-        // --- Quality Switcher ---
         function setQuality(camId, quality, btnElement) {
             const img = document.getElementById(`vid-cam${camId}`);
-            
-            // Add timestamp to force refresh (break cache)
             img.src = `/feed/cam${camId}/${quality}?t=${new Date().getTime()}`;
-
-            // Update Button Styles
-            const parent = btnElement.parentElement;
-            parent.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.parentElement.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
             btnElement.classList.add('active');
         }
 
-        // --- Standard Logic (History, Websocket, Toggles) ---
         function deleteEvent(cameraId, timestamp, cardElement) {
             if(!confirm("Delete clip?")) return;
             fetch(`http://10.0.0.1:8080/api/delete/${cameraId}/${timestamp}`, { method: 'DELETE' })
             .then(r => r.json()).then(d => { if(d.status==="success") cardElement.remove(); });
+        }
+
+        function rebootSystem() {
+            if(!confirm("Are you sure you want to REBOOT the remote Pi?")) return;
+            fetch('/api/system/reboot', { method: 'POST' })
+            .then(r => alert("Reboot command sent. System will restart."));
         }
 
         function createEventCard(event) {
@@ -157,21 +161,40 @@
             .then(d => {
                 const c = document.getElementById('history-container'); c.innerHTML='';
                 d.forEach(e => c.appendChild(createEventCard(e)));
-            });
+            })
+            .catch(err => console.error("History error:", err));
         }
 
         document.addEventListener("DOMContentLoaded", function() {
             loadHistory();
             const ws = new WebSocket("ws://" + location.host + "/ws");
+            
             ws.onmessage = (e) => {
                 const data = JSON.parse(e.data);
-                const el = document.getElementById(`status-${data.camera_id}`);
-                if(el) {
-                    if(data.event === "person_detected") {
-                        el.className = "status-box detected";
-                        el.innerText = `HUMAN DETECTED (${(data.confidence*100).toFixed(0)}%)`;
-                    } else if(data.event === "clear") {
-                        el.className = "status-box clear"; el.innerText = "STATUS: CLEAR";
+                
+                // 1. Handle Telemetry
+                if (data.type === 'telemetry' && data.telemetry) {
+                    document.getElementById('stat-cpu').innerText = data.telemetry.cpu;
+                    document.getElementById('stat-ram').innerText = data.telemetry.ram;
+                    document.getElementById('stat-disk').innerText = data.telemetry.disk;
+                    
+                    const temp = data.telemetry.temp;
+                    const tempEl = document.getElementById('stat-temp');
+                    tempEl.innerText = temp;
+                    if(temp > 75) tempEl.className = "stat-value alert";
+                    else tempEl.className = "stat-value";
+                }
+
+                // 2. Handle Detection
+                if (data.type === 'detection') {
+                    const el = document.getElementById(`status-${data.camera_id}`);
+                    if(el) {
+                        if(data.event === "person_detected") {
+                            el.className = "status-box detected";
+                            el.innerText = `HUMAN DETECTED (${(data.confidence*100).toFixed(0)}%)`;
+                        } else if(data.event === "clear") {
+                            el.className = "status-box clear"; el.innerText = "STATUS: CLEAR";
+                        }
                     }
                 }
             };

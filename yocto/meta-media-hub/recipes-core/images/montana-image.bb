@@ -26,6 +26,7 @@ IMAGE_INSTALL:append = " \
     ffmpeg \
     msmtp \
     human-detector \
+    hub-system-monitor \
     hostapd \ 
     dnsmasq \
     iptables \

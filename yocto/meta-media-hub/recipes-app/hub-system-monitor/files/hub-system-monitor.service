@@ -1,0 +1,22 @@
+[Unit]
+Description=Hub System Monitor (Telemetry & Control)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Reuse the existing secrets file
+EnvironmentFile=/etc/detector.env
+
+# Pass the variables to the script
+ExecStart=/usr/bin/python3 -u /usr/bin/hub_system_monitor.py \
+    --broker ${MQTT_BROKER} \
+    --port ${MQTT_PORT} \
+    --user ${MQTT_USER} \
+    --password ${MQTT_PASSWORD}
+
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
