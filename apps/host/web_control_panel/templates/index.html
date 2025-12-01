@@ -9,17 +9,9 @@
         
         /* Telemetry Bar */
         .stats-container {
-            display: flex;
-            gap: 30px;
-            background: #222;
-            padding: 15px 40px;
-            border-radius: 50px;
-            margin-bottom: 30px;
-            border: 1px solid #444;
-            justify-content: center;
-            width: fit-content;
-            margin-left: auto;
-            margin-right: auto;
+            display: flex; gap: 30px; background: #222; padding: 15px 40px; border-radius: 50px;
+            margin-bottom: 30px; border: 1px solid #444; justify-content: center;
+            width: fit-content; margin-left: auto; margin-right: auto;
         }
         .stat-item { font-weight: bold; color: #888; font-size: 1rem; }
         .stat-value { color: #fff; font-size: 1.2rem; margin-left: 5px; }
@@ -49,21 +41,26 @@
         input:checked + .slider { background-color: #2196F3; }
         input:checked + .slider:before { transform: translateX(22px); }
         
+        /* History Grid */
         .history-section { margin: 40px auto; width: 90%; max-width: 1300px; }
+        .filter-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; }
+        .filter-btn { background-color: #333; border: 1px solid #555; color: white; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .filter-btn:hover { background-color: #444; }
+        .filter-btn.active { background-color: #2196F3; border-color: #2196F3; }
+        input[type="date"] { background-color: #333; border: 1px solid #555; color: white; padding: 8px; border-radius: 5px; color-scheme: dark; }
+
         .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
         .event-card { background: #222; border: 1px solid #444; border-radius: 8px; overflow: hidden; }
         .event-header { padding: 8px; background: #333; display: flex; justify-content: space-between; }
         .event-badge { background: #dc3545; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
         .event-video video { width: 100%; display: block; }
         .event-footer { padding: 8px; font-size: 0.85em; color: #aaa; text-align: right; }
-        
         .event-actions { display: flex; border-top: 1px solid #333; }
         .action-btn { flex: 1; background: none; border: none; padding: 10px; color: #aaa; cursor: pointer; font-size: 1.2em; transition: 0.2s; text-decoration: none; display: flex; justify-content: center; align-items: center; }
         .action-btn:hover { background-color: #333; color: white; }
         .btn-download:hover { color: #2196F3; }
         .btn-delete:hover { color: #dc3545; }
 
-        /* Reboot Button */
         .danger-zone { margin-top: 40px; }
         .btn-reboot { background-color: #3a1c1c; color: #ff6b6b; border: 1px solid #dc3545; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-reboot:hover { background-color: #dc3545; color: white; }
@@ -114,6 +111,14 @@
 
     <div class="history-section">
         <h2>🚨 Event History</h2>
+        
+        <div class="filter-bar">
+            <button class="filter-btn active" id="btn-all" onclick="filterHistory('all')">ALL</button>
+            <button class="filter-btn" id="btn-today" onclick="filterHistory('today')">Today</button>
+            <button class="filter-btn" id="btn-yesterday" onclick="filterHistory('yesterday')">Yesterday</button>
+            <input type="date" id="date-picker" onchange="filterHistory('custom')">
+        </div>
+
         <div id="history-container" class="history-grid"></div>
     </div>
     
@@ -122,6 +127,30 @@
     </div>
 
     <script>
+        // --- Date Helpers ---
+        function formatDate(date) { return date.toISOString().split('T')[0]; }
+
+        function filterHistory(mode) {
+            let url = 'http://10.0.0.1:8080/api/history';
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            
+            if (mode === 'today') {
+                url += `?date=${formatDate(new Date())}`;
+                document.getElementById('btn-today').classList.add('active');
+            } else if (mode === 'yesterday') {
+                const d = new Date(); d.setDate(d.getDate() - 1);
+                url += `?date=${formatDate(d)}`;
+                document.getElementById('btn-yesterday').classList.add('active');
+            } else if (mode === 'custom') {
+                const val = document.getElementById('date-picker').value;
+                if(val) url += `?date=${val}`;
+            } else {
+                document.getElementById('btn-all').classList.add('active');
+            }
+            loadHistory(url);
+        }
+
+        // --- Core Functions ---
         function setQuality(camId, quality, btnElement) {
             const img = document.getElementById(`vid-cam${camId}`);
             img.src = `/feed/cam${camId}/${quality}?t=${new Date().getTime()}`;
@@ -147,7 +176,7 @@
             const conf = event.confidence ? (event.confidence * 100).toFixed(0) : "??";
             div.innerHTML = `
                 <div class="event-header"><strong>${event.camera_id}</strong><span class="event-badge">${conf}%</span></div>
-                <div class="event-video"><video controls preload="none"><source src="${event.video_url}" type="video/mp4"></video></div>
+                <div class="event-video"><video controls preload="metadata"><source src="${event.video_url}" type="video/mp4"></video></div>
                 <div class="event-footer">${event.date_string}</div>
                 <div class="event-actions">
                     <a href="${event.video_url}" download class="action-btn btn-download">⬇️</a>
@@ -156,36 +185,37 @@
             return div;
         }
 
-        function loadHistory() {
-            fetch('http://10.0.0.1:8080/api/history').then(r => r.json())
+        function loadHistory(url) {
+            if (!url) url = 'http://10.0.0.1:8080/api/history';
+            const c = document.getElementById('history-container');
+            c.innerHTML = '<p style="color:#aaa">Loading...</p>';
+            
+            fetch(url).then(r => r.json())
             .then(d => {
-                const c = document.getElementById('history-container'); c.innerHTML='';
+                c.innerHTML='';
+                if(d.length===0) c.innerHTML='<p style="color:#aaa">No events.</p>';
                 d.forEach(e => c.appendChild(createEventCard(e)));
             })
-            .catch(err => console.error("History error:", err));
+            .catch(e => { console.error(e); c.innerHTML='<p style="color:red">Error.</p>'; });
         }
 
+        // --- Main Load ---
         document.addEventListener("DOMContentLoaded", function() {
-            loadHistory();
-            const ws = new WebSocket("ws://" + location.host + "/ws");
+            filterHistory('all');
             
+            const ws = new WebSocket("ws://" + location.host + "/ws");
             ws.onmessage = (e) => {
                 const data = JSON.parse(e.data);
                 
-                // 1. Handle Telemetry
                 if (data.type === 'telemetry' && data.telemetry) {
                     document.getElementById('stat-cpu').innerText = data.telemetry.cpu;
                     document.getElementById('stat-ram').innerText = data.telemetry.ram;
                     document.getElementById('stat-disk').innerText = data.telemetry.disk;
-                    
                     const temp = data.telemetry.temp;
                     const tempEl = document.getElementById('stat-temp');
                     tempEl.innerText = temp;
-                    if(temp > 75) tempEl.className = "stat-value alert";
-                    else tempEl.className = "stat-value";
+                    if(temp > 75) tempEl.className = "stat-value alert"; else tempEl.className = "stat-value";
                 }
-
-                // 2. Handle Detection
                 if (data.type === 'detection') {
                     const el = document.getElementById(`status-${data.camera_id}`);
                     if(el) {

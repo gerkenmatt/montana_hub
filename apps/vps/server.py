@@ -4,7 +4,7 @@ import shutil
 import os
 import json
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -69,10 +69,22 @@ async def upload_clip(
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/history")
-async def get_history():
+async def get_history(date: str = Query(None, description="Filter by date YYYY-MM-DD")):
+    """
+    Returns history list. 
+    If 'date' param provided (e.g., 2025-11-26), returns only events from that day.
+    """
     with open(HISTORY_FILE, 'r') as f:
-        return json.load(f)
-
+        full_history = json.load(f)
+    
+    if date:
+        # Filter list where the date_string starts with the requested date
+        # event['date_string'] format is "YYYY-MM-DD HH:MM:SS"
+        filtered_history = [e for e in full_history if e['date_string'].startswith(date)]
+        return filtered_history
+    
+    return full_history
+    
 @app.delete("/api/delete/{camera_id}/{timestamp}")
 async def delete_event(camera_id: str, timestamp: float):
     """Deletes a clip file and its history entry."""
