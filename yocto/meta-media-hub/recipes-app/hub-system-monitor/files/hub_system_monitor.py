@@ -11,26 +11,61 @@ import subprocess
 STATUS_TOPIC = "cabin/hub/status"
 COMMAND_TOPIC = "cabin/hub/command"
 
+# Define which interfaces count as "Internet Data"
+# wlan1 = Home Wi-Fi (Current testing)
+# wwan0 = Cellular Data (Future Waveshare HAT)
+# eth0  = Ethernet (If plugged in)
+UPLINK_INTERFACES = ["wlan1", "wwan0", "eth0", "usb0"]
+
 def get_system_stats():
     """Gathers system health metrics."""
     try:
-        # CPU Load (Blocking call for 0.1s for accuracy)
-        cpu_pct = psutil.cpu_percent(interval=0.1)
+        # CPU Load
+        # interval=None compares cpu times since the last call.
+        # This effectively gives us the average usage over the last 3 seconds.
+        cpu_pct = psutil.cpu_percent(interval=None)
+        
         # Memory Usage
         ram = psutil.virtual_memory()
         ram_pct = ram.percent
-        # Disk Usage
+        
+        # Disk Usage (Root partition)
         disk = psutil.disk_usage('/')
         disk_pct = disk.percent
-        # CPU Temperature
+        
+        # CPU Temperature (Raspberry Pi specific)
         temp = 0.0
         try:
             with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
-                temp = round(float(f.read()) / 1000.0, 1)
+                celsius = float(f.read()) / 1000.0
+                # Convert to Fahrenheit
+                temp = round((celsius * 9/5) + 32, 1)
         except:
             pass 
 
-        return {"cpu": cpu_pct, "ram": ram_pct, "disk": disk_pct, "temp": temp}
+        # --- Network Usage ---
+        # Only count bytes sent over the Internet Uplink interfaces.
+        # This ignores:
+        #   - lo (Internal loopback traffic)
+        #   - wlan0 (Local camera traffic - FREE)
+        #   - wg0 (VPN traffic - counting this AND wlan1 would double-count)
+        net_sent_bytes = 0
+        net_stats = psutil.net_io_counters(pernic=True)
+        
+        for iface in UPLINK_INTERFACES:
+            if iface in net_stats:
+                net_sent_bytes += net_stats[iface].bytes_sent
+        
+        # Convert to Megabytes (MB)
+        net_sent_mb = round(net_sent_bytes / (1024 * 1024), 1)
+
+        return {
+            "cpu": cpu_pct, 
+            "ram": ram_pct, 
+            "disk": disk_pct, 
+            "temp": temp,
+            "net_sent": net_sent_mb
+        }
     except Exception as e:
         print(f"Error gathering stats: {e}")
         return {}
@@ -53,11 +88,9 @@ def on_message(client, userdata, msg):
             print("⚠️ REBOOT COMMAND RECEIVED. Rebooting in 2 seconds...")
             client.publish(STATUS_TOPIC, json.dumps({"status": "rebooting"}))
             time.sleep(2)
-            # Execute reboot
             os.system('reboot')
         
         elif action == "ping":
-            # Immediate heartbeat response
             stats = get_system_stats()
             client.publish(STATUS_TOPIC, json.dumps({
                 "status": "online",
@@ -94,6 +127,10 @@ def main():
 
     print("System Monitor Started.")
     
+    # Call once at startup to initialize psutil's internal timers
+    # The first call to cpu_percent(None) always returns 0.0
+    get_system_stats()
+    
     try:
         while True:
             stats = get_system_stats()
@@ -102,11 +139,10 @@ def main():
                 "timestamp": time.time(),
                 "telemetry": stats
             }
-            # Retain=True ensures the web app sees status immediately on load
             client.publish(STATUS_TOPIC, json.dumps(payload), qos=1, retain=True)
             
-            # Send heartbeat every 30 seconds
-            time.sleep(30) 
+            # Update every 3 seconds
+            time.sleep(3) 
             
     except KeyboardInterrupt:
         print("Stopping...")

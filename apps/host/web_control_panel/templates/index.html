@@ -72,8 +72,9 @@
     <div class="stats-container">
         <div class="stat-item">CPU: <span id="stat-cpu" class="stat-value">--</span>%</div>
         <div class="stat-item">RAM: <span id="stat-ram" class="stat-value">--</span>%</div>
-        <div class="stat-item">TEMP: <span id="stat-temp" class="stat-value">--</span>°C</div>
+        <div class="stat-item">TEMP: <span id="stat-temp" class="stat-value">--</span>°F</div>
         <div class="stat-item">DISK: <span id="stat-disk" class="stat-value">--</span>%</div>
+        <div class="stat-item">DATA: <span id="stat-net" class="stat-value">--</span> MB</div>
     </div>
 
     <div class="dashboard">
@@ -211,10 +212,17 @@
                     document.getElementById('stat-cpu').innerText = data.telemetry.cpu;
                     document.getElementById('stat-ram').innerText = data.telemetry.ram;
                     document.getElementById('stat-disk').innerText = data.telemetry.disk;
+                    
+                    // Update Network Stats
+                    if (data.telemetry.net_sent) {
+                        document.getElementById('stat-net').innerText = data.telemetry.net_sent;
+                    }
+
                     const temp = data.telemetry.temp;
                     const tempEl = document.getElementById('stat-temp');
                     tempEl.innerText = temp;
-                    if(temp > 75) tempEl.className = "stat-value alert"; else tempEl.className = "stat-value";
+                    if(temp > 175) tempEl.className = "stat-value alert";
+                    else tempEl.className = "stat-value";
                 }
                 if (data.type === 'detection') {
                     const el = document.getElementById(`status-${data.camera_id}`);
