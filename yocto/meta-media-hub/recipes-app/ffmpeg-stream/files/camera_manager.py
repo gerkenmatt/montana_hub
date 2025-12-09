@@ -5,6 +5,8 @@ import time
 import signal
 import subprocess
 import paho.mqtt.client as mqtt
+import requests
+import threading
 
 # --- CONFIGURATION ---
 CONFIG_FILE = "/etc/montana-hub/camera_config.env"
@@ -33,6 +35,46 @@ def load_config(instance_name):
     except Exception as e:
         print(f"Error reading config: {e}")
     return None
+
+def take_snapshot(config):
+    # Parse ID: "cam2-sd-remote" -> "cam2"
+    # We want the snapshot to update the CARD, regardless of SD/HD
+    cam_id_short = current_instance.split("-")[0] 
+    
+    print(f"[{current_instance}] Taking Snapshot for {cam_id_short}...")
+    
+    # 1. Define paths
+    rtsp_url = f"rtsp://{config['ip']}:8554{config['path']}"
+    temp_img = f"/tmp/{current_instance}.jpg"
+    
+    # WARNING: Use the VPN IP of the VPS here
+    upload_url = "http://10.0.0.3:8000/api/upload/snapshot" 
+
+    # 2. Run FFmpeg to grab ONE frame
+    # -ss 00:00:01 skips the first second to avoid "green/grey" garbage frames
+    cmd = [
+        "/usr/bin/ffmpeg", "-y",
+        "-hide_banner", "-loglevel", "error",
+        "-rtsp_transport", "tcp",
+        "-i", rtsp_url,
+        "-ss", "00:00:01.500", 
+        "-vframes", "1",
+        "-q:v", "2", 
+        temp_img
+    ]
+    
+    try:
+        subprocess.run(cmd, timeout=10, check=True)
+        
+        # 3. Upload to VPS
+        if os.path.exists(temp_img):
+            with open(temp_img, 'rb') as f:
+                # We send 'cam1' or 'cam2' so the web app knows which card to update
+                r = requests.post(upload_url, files={'file': f}, data={'camera_id': cam_id_short}, timeout=5)
+            os.remove(temp_img) # Delete from Pi immediately
+            
+    except Exception as e:
+        print(f"[{current_instance}] Snapshot Failed: {e}")
 
 def stop_ffmpeg():
     global ffmpeg_process
@@ -128,10 +170,14 @@ def parse_fps_payload(payload):
 
 def on_message(client, userdata, msg):
     payload = msg.payload.decode()
-    print(f"[{current_instance}] Received MQTT: {payload}")
-    fps = parse_fps_payload(payload)
-    # Just update the state; the watchdog loop will handle the restart
-    start_ffmpeg(userdata['config'], fps)
+    
+    if payload == "SNAPSHOT":
+        # Run in thread so we can click fast without blocking
+        threading.Thread(target=take_snapshot, args=(userdata['config'],)).start()
+    else:
+        print(f"[{current_instance}] Received MQTT: {payload}")
+        fps = parse_fps_payload(payload)
+        start_ffmpeg(userdata['config'], fps)
 
 def main():
     global current_instance, current_fps_state

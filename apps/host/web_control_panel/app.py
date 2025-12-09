@@ -8,11 +8,12 @@ import asyncio
 import numpy as np 
 import time
 import threading
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Form, File, UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
+import base64
 
 # --- Configuration ---
 MQTT_BROKER = "montanaiothub.cloud"
@@ -243,6 +244,33 @@ async def control_camera_endpoint(cmd: CameraControl):
     else:
         print("Error: Cloud MQTT client is not connected.")
         return {"status": "error", "detail": "Cloud MQTT not connected"}
+
+@app.post("/api/upload/snapshot")
+async def upload_snapshot(camera_id: str = Form(...), file: UploadFile = File(...)):
+    try:
+        print(f"INFO: Receiving snapshot for {camera_id}...")
+        
+        # 1. Read file into RAM
+        contents = await file.read()
+        
+        # 2. Convert to Base64 for the Browser
+        b64_string = base64.b64encode(contents).decode('utf-8')
+        
+        # 3. Create the WebSocket Payload
+        payload = {
+            "type": "snapshot",
+            "camera_id": camera_id,
+            "image": b64_string
+        }
+        
+        # 4. Push to WebSocket Queue (Instant update for browser)
+        await queue.put(json.dumps(payload))
+        
+        return {"status": "success"}
+        
+    except Exception as e:
+        print(f"ERROR: Snapshot processing failed: {e}")
+        return {"status": "error", "detail": str(e)}
 
 # --- Video Stream Generator ---
 # SIMPLIFIED: No longer needs to start/stop the camera threads

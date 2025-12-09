@@ -141,6 +141,7 @@
                 <button class="mode-btn" onclick="setStreamMode('cam1', 'LOW', this)">SENTRY</button>
                 <button class="mode-btn" onclick="setStreamMode('cam1', 'MEDIUM', this)">1 FPS</button>
                 <button class="mode-btn" onclick="setStreamMode('cam1', 'HIGH', this)">LIVE</button>
+                <button class="mode-btn" onclick="triggerSnapshot('cam1', this)">📸 SNAP</button>
             </div>
 
             <div id="status-camera1" class="status-box clear">Connecting...</div>
@@ -162,6 +163,7 @@
                 <button class="mode-btn" onclick="setStreamMode('cam2', 'LOW', this)">SENTRY</button>
                 <button class="mode-btn" onclick="setStreamMode('cam2', 'MEDIUM', this)">1 FPS</button>
                 <button class="mode-btn" onclick="setStreamMode('cam2', 'HIGH', this)">LIVE</button>
+                <button class="mode-btn" onclick="triggerSnapshot('cam2', this)">📸 SNAP</button>
             </div>
 
             <div id="status-camera2" class="status-box clear">Connecting...</div>
@@ -286,6 +288,31 @@
             return div;
         }
 
+        function triggerSnapshot(camId, btnElement) {
+            // Visual feedback on button
+            btnElement.style.backgroundColor = "#fff";
+            setTimeout(() => btnElement.style.backgroundColor = "", 100);
+
+            // 1. Get current quality to know which service to trigger
+            const quality = document.getElementById(`vid-${camId}`).getAttribute('data-quality') || 'sd';
+
+            // 2. Send Command
+            fetch('/api/camera/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    camera_id: camId, 
+                    stream_type: quality, 
+                    mode: "SNAPSHOT" 
+                })
+            });
+            
+            // 3. Visual cleanup (Turn off other modes visually)
+            const container = document.getElementById(`ctrl-${camId}`);
+            container.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn');
+            btnElement.classList.add('active-sentry');
+        }
+
         function loadHistory(url) {
             if (!url) url = 'http://10.0.0.1:8080/api/history';
             const c = document.getElementById('history-container');
@@ -332,6 +359,26 @@
                             el.innerText = `HUMAN DETECTED (${(data.confidence*100).toFixed(0)}%)`;
                         } else if(data.event === "clear") {
                             el.className = "status-box clear"; el.innerText = "STATUS: CLEAR";
+                        }
+                    }
+                }
+
+                // 3. Handle Snapshot (RAM Passthrough)
+                if (data.type === 'snapshot') {
+                    // Update the image source with the Base64 data
+                    const img = document.getElementById(`vid-${data.camera_id}`);
+                    if (img) {
+                        img.src = "data:image/jpeg;base64," + data.image;
+                        
+                        // Optional: Flash effect to show update happened
+                        img.style.opacity = 0.5;
+                        setTimeout(() => img.style.opacity = 1, 100);
+                        
+                        // Update the "Status" box
+                        const status = document.getElementById(`status-camera${data.camera_id.replace('cam','')}`);
+                        if(status) {
+                            status.innerText = "SNAPSHOT UPDATED";
+                            status.className = "status-box clear";
                         }
                     }
                 }
