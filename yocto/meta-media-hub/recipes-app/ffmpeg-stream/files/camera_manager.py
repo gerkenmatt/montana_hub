@@ -99,6 +99,7 @@ def start_ffmpeg(config, fps_mode):
             return  # Already running happily
 
     stop_ffmpeg()
+    time.sleep(2)   # give the RTSP server a moment to close the old socket
     current_fps_state = fps_mode
 
     if fps_mode == "OFF":
@@ -169,9 +170,22 @@ def parse_fps_payload(payload):
         except: return "OFF"
 
 def on_message(client, userdata, msg):
+    gloabel current_fps_state
     payload = msg.payload.decode()
     
     if payload == "SNAPSHOT":
+        print(f"[{current_instance}] Received MQTT: SNAPSHOT. Killing Live Stream.")
+
+        # 1. KILL the data hog (The Live Stream)
+        stop_ffmpeg()
+        
+        # 2. Tell Watchdog to stay asleep
+        current_fps_state = "OFF"
+
+        # 3. Wait a moment for the Camera's RTSP socket to free up
+        # (Wyze cameras struggle with 2 simultaneous connections)
+        time.sleep(1)
+
         # Run in thread so we can click fast without blocking
         threading.Thread(target=take_snapshot, args=(userdata['config'],)).start()
     else:

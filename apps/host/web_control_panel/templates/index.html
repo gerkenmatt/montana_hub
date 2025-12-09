@@ -245,6 +245,20 @@
             else if(mode === 'LOW') btnElement.classList.add('active-sentry');
             else btnElement.classList.add('active-live');
 
+            // If we are turning the stream ON (Low/Med/High), reset the video source
+            if (mode !== 'OFF') {
+                const img = document.getElementById(`vid-${camId}`);
+                // Add timestamp to break browser cache and force reload
+                img.src = `/feed/${camId}/${quality}?t=${new Date().getTime()}`;
+                
+                // Reset status text
+                const status = document.getElementById(`status-camera${camId.replace('cam','')}`);
+                if(status) {
+                    status.innerText = "Connecting...";
+                    status.className = "status-box clear"; // Reset color
+                }
+            }
+
             // 3. Send API Request
             console.log(`Setting ${camId} (${quality}) to ${mode}`);
             fetch('/api/camera/control', {

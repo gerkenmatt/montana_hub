@@ -230,7 +230,7 @@ async def control_camera_endpoint(cmd: CameraControl):
     target_cam = cameras.get(local_cam_id)
     
     if target_cam:
-        if cmd.mode == "OFF":
+        if cmd.mode == "OFF" or cmd.mode == "SNAPSHOT":
             target_cam.set_state(False)
         else:
             target_cam.set_state(True)
