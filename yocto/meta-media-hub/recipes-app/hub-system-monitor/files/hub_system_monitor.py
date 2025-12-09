@@ -42,7 +42,7 @@ def get_system_stats():
             "disk": disk.percent, 
             "temp": temp,
             "net_sent": net_sent_mb,
-            "net_raw": net_sent_bytes # <-- Needed for rate calc
+            "net_raw": net_sent_bytes 
         }
     except Exception as e:
         print(f"Error gathering stats: {e}")
@@ -59,7 +59,7 @@ def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
         if payload.get("action") == "reboot":
-            print("⚠️ REBOOT COMMAND RECEIVED.")
+            print("REBOOT COMMAND RECEIVED.")
             client.publish(STATUS_TOPIC, json.dumps({"status": "rebooting"}))
             time.sleep(2)
             os.system('reboot')

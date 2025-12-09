@@ -1,24 +1,29 @@
 SUMMARY = "Dynamic FFmpeg RTSP Streaming Service"
-DESCRIPTION = "A systemd template service to stream from Wyze cameras using a central config."
+DESCRIPTION = "A systemd template service to stream from Wyze cameras using a central config and MQTT control."
 LICENSE = "CLOSED"
 
 SRC_URI = " \
-    file://ffmpeg-streamer.sh \
+    file://camera_manager.py \
     file://camera_config.env \
     file://ffmpeg-stream@.service \
 "
 
 inherit systemd
 
-# Ensure the system has Bash (for the script) and FFmpeg installed
-RDEPENDS:${PN} = "ffmpeg bash"
+RDEPENDS:${PN} = " \
+    ffmpeg \
+    python3-core \
+    python3-paho-mqtt \
+    python3-threading \
+    python3-logging \
+"
 
 S = "${WORKDIR}"
 
 do_install() {
-    # 1. Install the wrapper script to /usr/bin
+    # 1. Install the Python manager script to /usr/bin
     install -d ${D}${bindir}
-    install -m 0755 ${S}/ffmpeg-streamer.sh ${D}${bindir}/
+    install -m 0755 ${S}/camera_manager.py ${D}${bindir}/
 
     # 2. Install the config file to /etc/montana-hub
     install -d ${D}${sysconfdir}/montana-hub
@@ -41,8 +46,6 @@ SYSTEMD_SERVICE:${PN} = " \
     ffmpeg-stream@cam2-hd-remote.service \
 "
 
-# --- THE FIX IS HERE ---
-# We explicitly tell Yocto that this package owns the systemd file and the config
 FILES:${PN} += " \
     ${systemd_unitdir}/system/ffmpeg-stream@.service \
     ${sysconfdir}/montana-hub/camera_config.env \

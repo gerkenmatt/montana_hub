@@ -23,7 +23,6 @@ MQTT_STATUS_TOPIC = "cabin/hub/status"
 MQTT_DETECTION_TOPIC = "cabin/camera/+/detection"
 MQTT_SETTINGS_TOPIC = "cabin/hub/settings"
 MQTT_COMMAND_TOPIC = "cabin/hub/command"
-PI_BROKER_IP = "10.0.0.2"
 
 # --- Camera Stream Ports (External/Remote TCP) ---
 URL_CAM1_SD = "tcp://10.0.0.2:9190"
@@ -37,41 +36,26 @@ templates = Jinja2Templates(directory="templates")
 queue = asyncio.Queue()
 mqtt_client = None
 
-# --- 1. ALWAYS-ON Video Camera Class ---
-# This class starts immediately and NEVER stops reading frames.
-# This ensures the TCP buffer never fills up.
-
-class AlwaysOnCamera(threading.Thread):
+# --- Smart Video Camera Class (On-Demand) ---
+class SmartVideoCamera(threading.Thread):
     def __init__(self, url, name):
         threading.Thread.__init__(self)
         self.url = url
-        self.name = name
+        self.name = name 
         self.lock = threading.Lock()
-        self.running = True
-        self.enabled = False
+        self.active_viewers = 0
+        self.running = False
+        self.connected = False 
         self.current_frame = None
         
-        # Create placeholders
         self.img_connecting = self._make_placeholder("Connecting...", (50, 100, 200)) 
-        self.img_offline = self._make_placeholder("OFFLINE", (0, 0, 255)) 
-        self.img_disabled = self._make_placeholder("STREAM OFF", (30, 30, 30))
+        self.img_offline = self._make_placeholder("OFFLINE / RETRYING", (0, 0, 255)) 
         self.current_frame = self.img_connecting
 
-        # START IMMEDIATELY
-        self.daemon = True
-        self.start()
-
-    def set_state(self, is_enabled):
-        """Enable or Disable the network connection attempts"""
-        self.enabled = is_enabled
-        if not is_enabled:
-            with self.lock:
-                self.current_frame = self.img_disabled
-        print(f"[{self.name}] State set to {'ENABLED' if is_enabled else 'DISABLED'}")
-
     def _make_placeholder(self, text, color):
+        """Helper to create status images."""
         img = np.zeros((480, 640, 3), dtype=np.uint8)
-        cv2.rectangle(img, (0,0), (640,480), color, 10) 
+        cv2.rectangle(img, (0,0), (640,480), color, 10)
         font = cv2.FONT_HERSHEY_SIMPLEX
         textsize = cv2.getTextSize(text, font, 1, 2)[0]
         textX = (img.shape[1] - textsize[0]) // 2
@@ -80,75 +64,108 @@ class AlwaysOnCamera(threading.Thread):
         _, buf = cv2.imencode('.jpg', img)
         return buf.tobytes()
 
-    def run(self):
-        print(f"[{self.name}] Thread started (Waiting for Enable signal)")
-        while self.running:
-            # 1. SLEEP MODE: If disabled, just wait and do nothing
-            if not self.enabled:
-                time.sleep(1)
-                continue
+    def start(self):
+        """Called when a client connects."""
+        with self.lock:
+            self.active_viewers += 1
+            if not self.running:
+                print(f"[{self.name}] Viewer connected. Starting stream...")
+                self.running = True
+                self.thread = threading.Thread(target=self._update)
+                self.thread.daemon = True
+                self.thread.start()
 
-            # 2. ACTIVE MODE: Try to connect
+    def stop(self):
+        """Called when a client disconnects."""
+        with self.lock:
+            self.active_viewers -= 1
+            if self.active_viewers <= 0:
+                self.active_viewers = 0
+                self.running = False
+                print(f"[{self.name}] No viewers left. Stopping stream.")
+
+    def _update(self):
+        """Background thread loop with buffer purge"""
+        # Fixed retry delay in seconds
+        RETRY_DELAY = 5 
+
+        while self.running:
             cap = cv2.VideoCapture(self.url)
+            # Set timeouts to fail fast
+            try:
+                cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
+                cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000)
+            except: pass 
+            
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
             if not cap.isOpened():
-                # Only log if we are supposed to be connected
-                if self.enabled:
-                    print(f"[{self.name}] Failed to connect. Retrying in 5s...")
-                    with self.lock:
-                        self.current_frame = self.img_connecting
-                time.sleep(5)
+                if self.connected: 
+                    print(f"[{self.name}] Connection failed. Retrying in {RETRY_DELAY}s...")
+                self.connected = False
+                self.current_frame = self.img_offline
+                
+                time.sleep(RETRY_DELAY)
                 continue
 
-            print(f"[{self.name}] Stream CONNECTED")
-            
-            while self.running and self.enabled: # Check enabled inside loop too!
+            # Connection successful
+            if not self.connected:
+                print(f"[{self.name}] Connection ESTABLISHED")
+                self.connected = True
+                # --- SMART BUFFER FLUSH START ---
+                # Read frames until we catch up to live time.
+                # If reading a frame takes < 5ms, it came from the buffer.
+                # If it takes > 20ms, we are waiting for the network (Live).
+                
+                max_flush_frames = 500 # Safety limit (approx 16s of video)
+                flushed_count = 0
+                
+                while flushed_count < max_flush_frames:
+                    t_start = time.time()
+                    grabbed = cap.grab()
+                    t_end = time.time()
+                    
+                    if not grabbed:
+                        break
+                        
+                    # 0.02s = 20ms. If grab took longer, we are waiting for live data.
+                    if (t_end - t_start) > 0.020:
+                        print(f"[{self.name}] Buffer cleared after {flushed_count} frames.")
+                        break
+                        
+                    flushed_count += 1
+                # --- SMART BUFFER FLUSH END ---
+
+            while self.running:
                 success, frame = cap.read()
                 
-                if not success:
-                    print(f"[{self.name}] Stream lost. Reconnecting...")
+                if success:
+                    ret, buffer = cv2.imencode('.jpg', frame)
+                    if ret:
+                        self.current_frame = buffer.tobytes()
+                else:
+                    print(f"[{self.name}] Stream lost/ended. Reconnecting...")
                     break 
                 
-                ret, buffer = cv2.imencode('.jpg', frame)
-                if ret:
-                    with self.lock:
-                        self.current_frame = buffer.tobytes()
-                
-                time.sleep(0.005) 
+                time.sleep(0.01) 
             
             cap.release()
 
     def get_frame(self):
-        with self.lock:
-            return self.current_frame
+        return self.current_frame
 
-# --- Instantiate Cameras ---
-# We store them in a dict called 'cameras' for easy lookup by the API
-cameras = {
-    "cam1-sd": AlwaysOnCamera(URL_CAM1_SD, "Cam1 SD"),
-    "cam1-hd": AlwaysOnCamera(URL_CAM1_HD, "Cam1 HD"),
-    "cam2-sd": AlwaysOnCamera(URL_CAM2_SD, "Cam2 SD"),
-    "cam2-hd": AlwaysOnCamera(URL_CAM2_HD, "Cam2 HD")
-}
+# --- Instantiate Cameras (Do not start them yet) ---
+cam1_sd = SmartVideoCamera(URL_CAM1_SD, "Cam1 SD")
+cam1_hd = SmartVideoCamera(URL_CAM1_HD, "Cam1 HD")
+cam2_sd = SmartVideoCamera(URL_CAM2_SD, "Cam2 SD")
+cam2_hd = SmartVideoCamera(URL_CAM2_HD, "Cam2 HD")
 
-# Create pointers so the existing feed routes below still work
-cam1_sd = cameras["cam1-sd"]
-cam1_hd = cameras["cam1-hd"]
-cam2_sd = cameras["cam2-sd"]
-cam2_hd = cameras["cam2-hd"]
-
-# --- MQTT Logic (Unchanged) ---
+# --- MQTT Logic ---
 class EmailSetting(BaseModel):
     enabled: bool
 
 class UploadSetting(BaseModel):
     enabled: bool
-
-class CameraControl(BaseModel):
-    camera_id: str  # e.g., "cam1"
-    stream_type: str # "sd" or "hd"
-    mode: str       # "OFF", "LOW", "MEDIUM", "HIGH"
 
 def on_connect(client, userdata, flags, rc, properties=None):
     print("Connected to MQTT Broker!")
@@ -159,11 +176,16 @@ def on_connect(client, userdata, flags, rc, properties=None):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode('utf-8'))
+        
+        # Handle Detection Messages
         if "camera" in msg.topic:
             payload['type'] = 'detection'
             payload['camera_id'] = msg.topic.split('/')[2]
+        
+        # Handle Telemetry/Status Messages
         elif "status" in msg.topic:
             payload['type'] = 'telemetry'
+
         queue.put_nowait(json.dumps(payload))
     except Exception as e: 
         print(f"Error processing message: {e}")
@@ -181,7 +203,7 @@ def start_mqtt():
         mqtt_client.loop_start()
     except: pass
 
-# --- API Endpoints (Unchanged) ---
+# --- API Endpoints ---
 @app.post("/api/settings/email")
 async def set_email(setting: EmailSetting):
     if mqtt_client:
@@ -213,46 +235,21 @@ async def ws_endpoint(websocket: WebSocket):
             await websocket.send_text(await queue.get())
     except WebSocketDisconnect: pass
 
-@app.post("/api/camera/control")
-async def control_camera_endpoint(cmd: CameraControl):
-    """
-    Sends command via the Main Cloud Broker (montanaiothub.cloud).
-    The Pi must be bridging this topic or connected to the cloud for this to work.
-    """
-    # 1. Construct IDs
-    instance_id_remote = f"{cmd.camera_id}-{cmd.stream_type}-remote"
-    
-    mqtt_topic = f"cabin/cameras/{instance_id_remote}/control"
-    
-    # 2. Toggle Local State (so the web app viewer wakes up)
-    local_cam_id = f"{cmd.camera_id}-{cmd.stream_type}"
-    target_cam = cameras.get(local_cam_id)
-    
-    if target_cam:
-        if cmd.mode == "OFF":
-            target_cam.set_state(False)
-        else:
-            target_cam.set_state(True)
-    
-    # 3. Publish to Cloud Broker using the existing global client
-    if mqtt_client and mqtt_client.is_connected():
-        print(f"Publishing {cmd.mode} to CLOUD: {mqtt_topic}")
-        # Retain=True ensures the Pi picks it up even if it momentarily loses internet
-        mqtt_client.publish(mqtt_topic, cmd.mode, qos=1, retain=True)
-        return {"status": "success", "target": instance_id_remote, "mode": cmd.mode}
-    else:
-        print("Error: Cloud MQTT client is not connected.")
-        return {"status": "error", "detail": "Cloud MQTT not connected"}
-
-# --- Video Stream Generator ---
-# SIMPLIFIED: No longer needs to start/stop the camera threads
+# --- Video Stream Generator (On-Demand Logic) ---
 async def gen_frames(camera):
+    # 1. Connect when request starts
+    camera.start()
     try:
         while True:
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + camera.get_frame() + b'\r\n')
+            # Limit refresh rate for browser
             await asyncio.sleep(0.05)
     except asyncio.CancelledError:
+        # Handle client disconnect
         pass
+    finally:
+        # 3. User disconnected: Stop the stream
+        camera.stop()
 
 @app.get("/feed/cam1/sd")
 async def feed1_sd(): return StreamingResponse(gen_frames(cam1_sd), media_type="multipart/x-mixed-replace; boundary=frame")

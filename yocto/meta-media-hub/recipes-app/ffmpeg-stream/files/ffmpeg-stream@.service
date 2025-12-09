@@ -1,7 +1,7 @@
 [Unit]
-Description=FFmpeg Streamer: %i
-Requires=hostapd.service dnsmasq.service
-After=network-online.target hostapd.service dnsmasq.service wg-quick@wg0.service
+Description=FFmpeg Streamer (Managed): %i
+Requires=hostapd.service dnsmasq.service mosquitto.service
+After=network-online.target hostapd.service dnsmasq.service wg-quick@wg0.service mosquitto.service
 StartLimitIntervalSec=0
 StartLimitBurst=0
 
@@ -9,14 +9,14 @@ StartLimitBurst=0
 Type=simple
 SuccessExitStatus=SIGPIPE 141
 Restart=always
-RestartSec=1
+RestartSec=5
 KillSignal=SIGINT
-TimeoutStopSec=5
+TimeoutStopSec=10
 NoNewPrivileges=yes
-Environment=FFREPORT=file=/var/log/ffmpeg_%i.log:level=32
+Environment=PYTHONUNBUFFERED=1
 
-# The script handles the logic, passing %i (e.g., cam1-hd-local) as the argument
-ExecStart=/usr/bin/ffmpeg-streamer.sh %i
+# Execute the Python manager, passing the instance name (%i)
+ExecStart=/usr/bin/python3 /usr/bin/camera_manager.py %i
 
 [Install]
 WantedBy=multi-user.target
