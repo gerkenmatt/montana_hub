@@ -53,22 +53,21 @@ def take_snapshot(config):
     # 2. Run FFmpeg to grab ONE frame
     cmd = [
         "/usr/bin/ffmpeg", "-y",
-        "-hide_banner", 
-        "-loglevel", "fatal",       
+        "-hide_banner", "-loglevel", "fatal",       
         "-nostdin",
         
-        # --- Stability Flags (Same as Live Stream) ---
+        # --- Stability Flags ---
         "-err_detect", "ignore_err",
         "-rtsp_transport", "tcp",
         "-stimeout", "2000000",      # 2s timeout for snapshot
         "-rtsp_flags", "prefer_tcp",
         "-allowed_media_types", "video",
-        "-analyzeduration", "10M",
-        "-probesize", "10M",
+
+        "-analyzeduration", "1M",
+        "-probesize", "1M",
         "-fflags", "+genpts+igndts+discardcorrupt",
         
         "-i", rtsp_url,
-        "-ss", "00:00:01.500",       # Skip first 1.5s to avoid grey frames
         "-vframes", "1",
         "-q:v", "2", 
         temp_img
@@ -192,17 +191,12 @@ def on_message(client, userdata, msg):
     payload = msg.payload.decode()
     
     if payload == "SNAPSHOT":
-        print(f"[{current_instance}] Received MQTT: SNAPSHOT. Killing Live Stream.")
-
-        # 1. KILL the data hog (The Live Stream)
-        stop_ffmpeg()
-        
-        # 2. Tell Watchdog to stay asleep
-        current_fps_state = "OFF"
-
-        # 3. Wait a moment for the Camera's RTSP socket to free up
-        # (Wyze cameras struggle with 2 simultaneous connections)
-        # time.sleep(1)
+        if current_fps_state != "OFF":
+            print(f"[{current_instance}] Interrupting Live Stream for Snapshot...")
+            stop_ffmpeg()
+            current_fps_state = "OFF"
+            # Only sleep if we just killed a heavy TCP connection to clear the socket
+            time.sleep(1)
 
         # Run in thread so we can click fast without blocking
         threading.Thread(target=take_snapshot, args=(userdata['config'],)).start()
