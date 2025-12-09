@@ -230,7 +230,7 @@ async def control_camera_endpoint(cmd: CameraControl):
     target_cam = cameras.get(local_cam_id)
     
     if target_cam:
-        if cmd.mode == "OFF" or cmd.mode == "SNAPSHOT":
+        if cmd.mode in ["OFF", "SNAPSHOT", "LOW"]:
             target_cam.set_state(False)
         else:
             target_cam.set_state(True)
@@ -273,7 +273,6 @@ async def upload_snapshot(camera_id: str = Form(...), file: UploadFile = File(..
         return {"status": "error", "detail": str(e)}
 
 # --- Video Stream Generator ---
-# SIMPLIFIED: No longer needs to start/stop the camera threads
 async def gen_frames(camera):
     try:
         while True:
@@ -295,4 +294,4 @@ async def feed2_hd(): return StreamingResponse(gen_frames(cam2_hd), media_type="
 async def root(request: Request): return templates.TemplateResponse("index.html", {"request": request})
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

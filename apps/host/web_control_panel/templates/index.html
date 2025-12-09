@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cabin Security Hub</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -200,6 +201,11 @@
 
     <script>
         // --- Date Helpers ---
+        const mqtt_client = new Paho.MQTT.Client(location.hostname, 9001, "web_" + new Date().getTime());
+    
+        // Track the Sentry Mode timer so we can stop it later
+        let sentryInterval = null;
+
         function formatDate(date) { return date.toISOString().split('T')[0]; }
 
         function filterHistory(mode) {
@@ -233,23 +239,44 @@
         }
 
         function setStreamMode(camId, mode, btnElement) {
-            // 1. Get current quality (sd or hd) so we turn on the right service
-            const quality = document.getElementById(`vid-${camId}`).getAttribute('data-quality');            
-            
+
+            // 1. CLEAR EXISTING TIMER 
+            if (sentryInterval) {
+                clearInterval(sentryInterval);
+                sentryInterval = null;
+                console.log("Sentry Loop Stopped");
+            }
+
+            const quality = document.getElementById(`vid-${camId}`).getAttribute('data-quality') || 'sd';      
+
             // 2. Visual Feedback
             const container = document.getElementById(`ctrl-${camId}`);
             container.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn'); // Reset all
             
             // Set active class based on mode
             if(mode === 'OFF') btnElement.classList.add('active-off');
-            else if(mode === 'LOW') btnElement.classList.add('active-sentry');
+            else if(mode === 'LOW') {
+                btnElement.classList.add('active-sentry');
+                
+                // --- START SENTRY LOOP ---
+                console.log("Starting Sentry Loop (10s)...");
+                // Take one immediately
+                triggerSnapshot(camId, btnElement); 
+                // Then take one every 10 seconds
+                sentryInterval = setInterval(() => {
+                    triggerSnapshot(camId, btnElement);
+                }, 10000); 
+                // -------------------------
+            }
             else btnElement.classList.add('active-live');
 
-            // If we are turning the stream ON (Low/Med/High), reset the video source
-            if (mode !== 'OFF') {
+            // 3. Reset Image Source if switching TO Live Video (Medium/High)
+            if (mode !== 'OFF' && mode !== 'LOW') {
                 const img = document.getElementById(`vid-${camId}`);
-                // Add timestamp to break browser cache and force reload
-                img.src = `/feed/${camId}/${quality}?t=${new Date().getTime()}`;
+                img.src = ""; // Blink
+                setTimeout(() => {
+                    img.src = `/feed/${camId}/${quality}?t=${new Date().getTime()}`;
+                }, 100);
                 
                 // Reset status text
                 const status = document.getElementById(`status-camera${camId.replace('cam','')}`);
@@ -388,12 +415,6 @@
                         img.style.opacity = 0.5;
                         setTimeout(() => img.style.opacity = 1, 100);
                         
-                        // Update the "Status" box
-                        const status = document.getElementById(`status-camera${data.camera_id.replace('cam','')}`);
-                        if(status) {
-                            status.innerText = "SNAPSHOT UPDATED";
-                            status.className = "status-box clear";
-                        }
                     }
                 }
             };

@@ -178,7 +178,7 @@ def start_ffmpeg(config, fps_mode):
 
 def parse_fps_payload(payload):
     payload = payload.upper()
-    if payload == "LOW": return 0.1
+    if payload == "LOW": return "OFF"
     elif payload == "MEDIUM": return 1
     elif payload == "HIGH": return 20
     elif payload == "OFF": return "OFF"
