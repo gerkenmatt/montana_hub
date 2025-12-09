@@ -51,18 +51,28 @@ def take_snapshot(config):
     upload_url = "http://10.0.0.3:8000/api/upload/snapshot" 
 
     # 2. Run FFmpeg to grab ONE frame
-    # -ss 00:00:01 skips the first second to avoid "green/grey" garbage frames
     cmd = [
         "/usr/bin/ffmpeg", "-y",
-        "-hide_banner", "-loglevel", "error",
+        "-hide_banner", 
+        "-loglevel", "fatal",       
+        "-nostdin",
+        
+        # --- Stability Flags (Same as Live Stream) ---
+        "-err_detect", "ignore_err",
         "-rtsp_transport", "tcp",
+        "-stimeout", "2000000",      # 2s timeout for snapshot
+        "-rtsp_flags", "prefer_tcp",
+        "-allowed_media_types", "video",
+        "-analyzeduration", "10M",
+        "-probesize", "10M",
+        "-fflags", "+genpts+igndts+discardcorrupt",
+        
         "-i", rtsp_url,
-        "-ss", "00:00:01.500", 
+        "-ss", "00:00:01.500",       # Skip first 1.5s to avoid grey frames
         "-vframes", "1",
         "-q:v", "2", 
         temp_img
     ]
-    
     try:
         subprocess.run(cmd, timeout=10, check=True)
         
@@ -77,18 +87,26 @@ def take_snapshot(config):
         print(f"[{current_instance}] Snapshot Failed: {e}")
 
 def stop_ffmpeg():
-    global ffmpeg_process
+    global ffmpeg_process, current_fps_state
     if ffmpeg_process:
-        # Only print if we are killing an active process
-        if ffmpeg_process.poll() is None: 
-            print(f"[{current_instance}] Stopping FFmpeg...")
-            ffmpeg_process.send_signal(signal.SIGTERM)
-            try:
-                ffmpeg_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                ffmpeg_process.kill()
-        
+        print(f"[{current_instance}] Stopping FFmpeg...")
+        ffmpeg_process.send_signal(signal.SIGTERM)
+        try:
+            ffmpeg_process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            ffmpeg_process.kill()
         ffmpeg_process = None
+
+    # Force kill any leftover processes holding the video port
+    try:
+        # Extracts port (e.g., 9191) from the output URL
+        port = config['output'].split(':')[-1].split('?')[0]
+        # Kills any process using this port
+        subprocess.run(f"fuser -k -n tcp {port}", shell=True, stderr=subprocess.DEVNULL)
+    except:
+        pass
+        
+    current_fps_state = "OFF"
 
 def start_ffmpeg(config, fps_mode):
     global ffmpeg_process, current_fps_state
@@ -112,7 +130,7 @@ def start_ffmpeg(config, fps_mode):
     cmd = [
         "/usr/bin/ffmpeg",
         "-hide_banner",
-        "-loglevel", "warning",      # Cleaner logs
+        "-loglevel", "fatal",      # Cleaner logs
         "-nostdin",
         
         # --- INPUT STABILITY FLAGS ---
@@ -170,7 +188,7 @@ def parse_fps_payload(payload):
         except: return "OFF"
 
 def on_message(client, userdata, msg):
-    gloabel current_fps_state
+    global current_fps_state
     payload = msg.payload.decode()
     
     if payload == "SNAPSHOT":
@@ -184,7 +202,7 @@ def on_message(client, userdata, msg):
 
         # 3. Wait a moment for the Camera's RTSP socket to free up
         # (Wyze cameras struggle with 2 simultaneous connections)
-        time.sleep(1)
+        # time.sleep(1)
 
         # Run in thread so we can click fast without blocking
         threading.Thread(target=take_snapshot, args=(userdata['config'],)).start()
@@ -194,7 +212,7 @@ def on_message(client, userdata, msg):
         start_ffmpeg(userdata['config'], fps)
 
 def main():
-    global current_instance, current_fps_state
+    global current_instance, current_fps_state, config
     if len(sys.argv) < 2:
         print("Usage: camera_manager.py <INSTANCE_NAME>")
         sys.exit(1)
