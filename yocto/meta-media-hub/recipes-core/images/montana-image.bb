@@ -40,6 +40,12 @@ IMAGE_INSTALL:append = " \
     ca-certificates \
     ffmpeg-stream \
     wireguard-tools \
+    hailo-pci \         
+    hailo-firmware \      
+    libhailort \          
+    hailortcli \          
+    libgsthailo \         
+    pyhailort \     
 "
 # Enable SSH and 1GB of free space for logs/updates
 EXTRA_IMAGE_FEATURES += "ssh-server-dropbear"
