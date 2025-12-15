@@ -9,14 +9,14 @@ RDEPENDS:${PN} = " \
     python3-numpy \
     python3-paho-mqtt \
     python3-requests \
+    python3-threading \ 
+    pyhailort \
 "
 
 # List all the files we are installing
 SRC_URI = " \
     file://human_detector.py \
-    file://yolov4-tiny.weights \
-    file://yolov4-tiny.cfg \
-    file://coco.names \
+    file://yolov8s.hef \ 
     file://human-detector-cam1.service \
     file://human-detector-cam2.service \
 "
@@ -32,11 +32,9 @@ do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/human_detector.py ${D}${bindir}/
 
-    # Install the model files
+    # Install the Hailo Model (THIS WAS MISSING)
     install -d ${D}${datadir}/human-detector
-    install -m 0644 ${WORKDIR}/yolov4-tiny.weights ${D}${datadir}/human-detector/
-    install -m 0644 ${WORKDIR}/yolov4-tiny.cfg ${D}${datadir}/human-detector/
-    install -m 0644 ${WORKDIR}/coco.names ${D}${datadir}/human-detector/
+    install -m 0644 ${WORKDIR}/yolov8s.hef ${D}${datadir}/human-detector/
     
     # Install the systemd service files
     install -d ${D}${systemd_system_unitdir}
@@ -44,8 +42,6 @@ do_install() {
     install -m 0644 ${WORKDIR}/human-detector-cam2.service ${D}${systemd_system_unitdir}/
 }
 
-# --- CORRECTED SECTION ---
-# Only list the files that are NOT automatically handled by an inherited class
 FILES:${PN} += " \
     ${bindir}/human_detector.py \
     ${datadir}/human-detector/* \

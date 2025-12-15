@@ -15,21 +15,119 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 import requests 
+from hailo_platform import (HEF, VDevice, HailoStreamInterface, InferVStreams, ConfigureParams, InputVStreamParams, OutputVStreamParams, FormatType)
 
 cv2.setNumThreads(1)
 
 # --- Configuration ---
-DEFAULT_MODEL_PATH = "/usr/share/human-detector/"
+DEFAULT_MODEL_PATH = "/usr/share/human-detector/yolov8s.hef"
 DEFAULT_CONF_THRESHOLD = 0.5
 DEFAULT_NMS_THRESHOLD = 0.4
 NOTIFICATION_COOLDOWN = 30 # Seconds
 MQTT_SETTINGS_TOPIC = "cabin/hub/settings"
-
-# VPS Storage Endpoint (Use the VPN IP of my VPS)
 VPS_UPLOAD_URL = "http://10.0.0.1:8080/api/upload"
 
 g_notifications_enabled = False     # Default Email OFF
-g_upload_enabled = True             # Default Upload ON
+g_upload_enabled = False            # Default Upload OFF 
+
+
+# --- HAILO DETECTOR CLASS ---
+class HailoDetector:
+    def __init__(self, hef_path, confidence_thresh=0.5, nms_thresh=0.4):
+        self.hef = HEF(hef_path)
+        self.target = VDevice()
+        
+        self.configure_params = ConfigureParams.create_from_hef(hef=self.hef, interface=HailoStreamInterface.PCIe)
+        self.network_groups = self.target.configure(self.hef, self.configure_params)
+        self.network_group = self.network_groups[0]
+        
+        self.input_vstream_params = self.network_group.make_input_vstream_params({}, format_type=FormatType.FLOAT32)
+        self.output_vstream_params = self.network_group.make_output_vstream_params({}, format_type=FormatType.FLOAT32)
+        
+        self.input_vstreams_info = self.hef.get_input_vstream_infos()
+        self.output_vstreams_info = self.hef.get_output_vstream_infos()
+        
+        self.conf_thresh = confidence_thresh
+        self.nms_thresh = nms_thresh
+
+    def preprocess(self, image):
+        # Hailo models expect strict input sizes (usually 640x640 for YOLOv8)
+        height, width, _ = self.input_vstreams_info[0].shape
+        
+        # Resize and pad to maintain aspect ratio
+        h, w = image.shape[:2]
+        scale = min(width / w, height / h)
+        nw, nh = int(w * scale), int(h * scale)
+        image_resized = cv2.resize(image, (nw, nh))
+        
+        # Create canvas
+        image_padded = np.full((height, width, 3), 114, dtype=np.uint8)
+        dw, dh = (width - nw) // 2, (height - nh) // 2
+        image_padded[dh:nh+dh, dw:nw+dw, :] = image_resized
+        
+        # Convert BGR (OpenCV) to RGB (Hailo) and normalize if required
+        input_data = cv2.cvtColor(image_padded, cv2.COLOR_BGR2RGB)
+        input_data = np.expand_dims(input_data, axis=0).astype(np.float32)
+        return input_data, scale, dw, dh
+
+    def detect(self, image):
+        input_data, scale, dw, dh = self.preprocess(image)
+        
+        # Run Inference
+        with InferVStreams(self.network_group, self.input_vstream_params, self.output_vstream_params) as infer_pipeline:
+            input_name = self.input_vstreams_info[0].name
+            infer_results = infer_pipeline.infer({input_name: input_data})
+            
+            # YOLOv8s typically has one output tensor
+            output_tensor = list(infer_results.values())[0] # Shape usually [1, 84, 8400]
+            
+        return self.postprocess_yolov8(output_tensor, scale, dw, dh)
+
+    def postprocess_yolov8(self, output, scale, dw, dh):
+        # Transpose output: [1, 84, 8400] -> [8400, 84]
+        predictions = np.squeeze(output).T
+        
+        scores = np.max(predictions[:, 4:], axis=1)
+        predictions = predictions[scores > self.conf_thresh, :]
+        scores = scores[scores > self.conf_thresh]
+        
+        if len(scores) == 0:
+            return [], 0.0
+
+        class_ids = np.argmax(predictions[:, 4:], axis=1)
+        
+        # Filter for 'Person' class (Class ID 0 in COCO)
+        person_indices = class_ids == 0
+        predictions = predictions[person_indices]
+        scores = scores[person_indices]
+        
+        if len(scores) == 0:
+            return [], 0.0
+
+        # Extract boxes
+        boxes = predictions[:, :4]
+        input_h, input_w, _ = self.input_vstreams_info[0].shape
+        
+        # Scale boxes back to original image
+        boxes[:, 0] = (boxes[:, 0] - dw) / scale # x
+        boxes[:, 1] = (boxes[:, 1] - dh) / scale # y
+        boxes[:, 2] = (boxes[:, 2]) / scale      # w
+        boxes[:, 3] = (boxes[:, 3]) / scale      # h
+        
+        # Convert cx,cy,w,h to x,y,w,h (Top-Left)
+        boxes[:, 0] = boxes[:, 0] - boxes[:, 2] / 2
+        boxes[:, 1] = boxes[:, 1] - boxes[:, 3] / 2
+
+        # NMS
+        indices = cv2.dnn.NMSBoxes(boxes.tolist(), scores.tolist(), self.conf_thresh, self.nms_thresh)
+        
+        max_conf = 0.0
+        detections = []
+        for i in indices:
+            max_conf = max(max_conf, scores[i])
+            detections.append(True)
+            
+        return detections, max_conf
 
 def on_settings_message(client, userdata, msg):
     """Called when a new message is received on the settings topic."""
@@ -79,7 +177,7 @@ def send_notification_thread(args, confidence_score):
 
         print(f"INFO: [Notify Thread] Clip saved to {clip_path}")
 
-        # --- 2. Upload to VPS (Cloud NVR) ---
+        # --- 2. Upload to VPS ---
         if g_upload_enabled:
             print(f"INFO: [Notify Thread] Uploading to {VPS_UPLOAD_URL}...")
             try:
@@ -162,19 +260,11 @@ def main(args, mqtt_client):
     camera_id = args.camera_id
 
     try:
-        weights_path = f"{model_path}/yolov4-tiny.weights"
-        cfg_path = f"{model_path}/yolov4-tiny.cfg"
-        names_path = f"{model_path}/coco.names"
-        net = cv2.dnn.readNet(weights_path, cfg_path)
-        net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-        net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-        with open(names_path, "r") as f:
-            classes = [line.strip() for line in f.readlines()]
-        layer_names = net.getLayerNames()
-        output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
-        print(f"INFO: Model loaded successfully. Looking for 'person' class.")
+        print(f"INFO: Loading Hailo Model: {args.model_path}")
+        detector = HailoDetector(args.model_path, args.confidence, args.nms)
+        print("INFO: Hailo VDevice Initialized successfully.")
     except Exception as e:
-        print(f"ERROR: Could not load model. Check paths. Error: {e}", file=sys.stderr)
+        print(f"ERROR: Failed to initialize Hailo: {e}")
         return
 
     # --- Build GStreamer Pipeline ---
@@ -214,7 +304,7 @@ def main(args, mqtt_client):
     print(f"INFO: Successfully connected to stream. Starting detection loop...")
 
     frame_idx = 0
-    last_detection_state = None 
+    last_detection_state = False
     detection_topic = f"cabin/camera/{camera_id}/detection" 
     last_notification_time = 0
 
@@ -229,23 +319,13 @@ def main(args, mqtt_client):
                 continue
 
             frame_idx += 1
-            if frame_idx % 5: continue
+            if frame_idx % 3: continue
 
             current_detection_state = False 
             max_confidence = 0.0
             
-            blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (320, 320), swapRB=True, crop=False)
-            net.setInput(blob)
-            layer_outputs = net.forward(output_layers)
-
-            for output in layer_outputs:
-                for detection in output:
-                    scores = detection[5:]
-                    class_id = np.argmax(scores)
-                    conf = scores[class_id]
-                    if classes[class_id] == "person" and conf > confidence:
-                        current_detection_state = True
-                        if conf > max_confidence: max_confidence = conf
+            detections, max_confidence = detector.detect(frame)
+            current_detection_state = len(detections) > 0
             
             current_time = time.time()
 
