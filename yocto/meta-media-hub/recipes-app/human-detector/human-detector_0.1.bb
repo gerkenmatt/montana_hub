@@ -1,48 +1,48 @@
 SUMMARY = "Human detection service that publishes to MQTT"
-DESCRIPTION = "Runs YOLOv4-tiny on a local TCP stream and publishes alerts."
+DESCRIPTION = "Runs YOLOv8 on Hailo with dual camera support."
 LICENSE = "CLOSED"
 
-# Add dependencies for Python, OpenCV, and MQTT
 RDEPENDS:${PN} = " \
     python3-core \
     python3-opencv \
     python3-numpy \
     python3-paho-mqtt \
     python3-requests \
-    python3-threading \ 
+    python3-threading \
     pyhailort \
 "
 
-# List all the files we are installing
 SRC_URI = " \
-    file://human_detector.py \
-    file://yolov8s.hef \ 
-    file://human-detector-cam1.service \
-    file://human-detector-cam2.service \
+    file://human_detector_manager.py \
+    file://config.json \
+    file://yolov8s.hef \
+    file://human-detector.service \
 "
 
 inherit systemd
 
-# Enable BOTH services on boot
-# The 'systemd' class will read this variable and package these two files
-SYSTEMD_SERVICE:${PN} = "human-detector-cam1.service human-detector-cam2.service"
+SYSTEMD_SERVICE:${PN} = "human-detector.service"
 
 do_install() {
-    # Install the Python script
+    # Install the Python Manager Script
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/human_detector.py ${D}${bindir}/
+    install -m 0755 ${WORKDIR}/human_detector_manager.py ${D}${bindir}/
 
-    # Install the Hailo Model (THIS WAS MISSING)
+    # Install the Config File
+    install -d ${D}${sysconfdir}/human_detector
+    install -m 0644 ${WORKDIR}/config.json ${D}${sysconfdir}/human_detector/
+
+    # Install the Hailo Model
     install -d ${D}${datadir}/human-detector
     install -m 0644 ${WORKDIR}/yolov8s.hef ${D}${datadir}/human-detector/
     
-    # Install the systemd service files
+    # Install the SINGLE systemd service
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/human-detector-cam1.service ${D}${systemd_system_unitdir}/
-    install -m 0644 ${WORKDIR}/human-detector-cam2.service ${D}${systemd_system_unitdir}/
+    install -m 0644 ${WORKDIR}/human-detector.service ${D}${systemd_system_unitdir}/
 }
 
 FILES:${PN} += " \
-    ${bindir}/human_detector.py \
+    ${bindir}/human_detector_manager.py \
+    ${sysconfdir}/human_detector/config.json \
     ${datadir}/human-detector/* \
 "

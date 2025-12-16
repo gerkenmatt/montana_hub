@@ -1,0 +1,35 @@
+{
+    "mqtt": {
+        "broker": "montanaiothub.cloud",
+        "port": 8883,
+        "user": "YOUR_MQTT_USER",
+        "password": "YOUR_MQTT_PASSWORD"
+    },
+    "model": {
+        "path": "/usr/share/human-detector/yolov8s.hef",
+        "confidence": 0.60,
+        "nms": 0.4
+    },
+    "vps_url": "http://10.0.0.1:8080/api/upload",
+    "cameras": [
+        {
+            "id": "camera1",
+            "url": "udp://127.0.0.1:9090",
+            "upload_enabled": true,
+            "email_enabled": true
+        },
+        {
+            "id": "camera2",
+            "url": "udp://127.0.0.1:9091",
+            "upload_enabled": true,
+            "email_enabled": true
+        }
+    ],
+    "email_config": {
+        "sender": "your_email@gmail.com",
+        "password": "your_app_password",
+        "recipient": "target_email@gmail.com",
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587
+    }
+}

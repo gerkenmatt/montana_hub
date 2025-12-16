@@ -1,0 +1,13 @@
+[Unit]
+Description=Human Detector Manager (Dual Camera)
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 -u /usr/bin/human_detector_manager.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
