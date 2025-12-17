@@ -216,33 +216,46 @@ async def ws_endpoint(websocket: WebSocket):
 
 @app.post("/api/camera/control")
 async def control_camera_endpoint(cmd: CameraControl):
-    """
-    Sends command via the Main Cloud Broker (montanaiothub.cloud).
-    The Pi must be bridging this topic or connected to the cloud for this to work.
-    """
-    # 1. Construct IDs
-    instance_id_remote = f"{cmd.camera_id}-{cmd.stream_type}-remote"
+    # 1. Determine the Current and the "Other" stream type
+    # If we are controlling SD, we must kill HD. If HD, kill SD.
+    target_type = cmd.stream_type
+    other_type = "hd" if target_type == "sd" else "sd"
+
+    # 2. Construct IDs
+    instance_target = f"{cmd.camera_id}-{target_type}-remote"
+    instance_other = f"{cmd.camera_id}-{other_type}-remote"
     
-    mqtt_topic = f"cabin/cameras/{instance_id_remote}/control"
-    
-    # 2. Toggle Local State (so the web app viewer wakes up)
-    local_cam_id = f"{cmd.camera_id}-{cmd.stream_type}"
+    topic_target = f"cabin/cameras/{instance_target}/control"
+    topic_other = f"cabin/cameras/{instance_other}/control"
+
+    # 3. Handle Local Viewer State (Existing Logic)
+    local_cam_id = f"{cmd.camera_id}-{target_type}"
     target_cam = cameras.get(local_cam_id)
-    
     if target_cam:
         if cmd.mode in ["OFF", "SNAPSHOT", "LOW"]:
             target_cam.set_state(False)
         else:
             target_cam.set_state(True)
-    
-    # 3. Publish to Cloud Broker using the existing global client
+
+    # 4. MQTT Publishing Logic
     if mqtt_client and mqtt_client.is_connected():
-        print(f"Publishing {cmd.mode} to CLOUD: {mqtt_topic}")
-        # Retain=True ensures the Pi picks it up even if it momentarily loses internet
-        mqtt_client.publish(mqtt_topic, cmd.mode, qos=1, retain=True)
-        return {"status": "success", "target": instance_id_remote, "mode": cmd.mode}
+        print(f"Publishing {cmd.mode} to {instance_target}")
+        
+        # A. Send command to the TARGET stream
+        mqtt_client.publish(topic_target, cmd.mode, qos=1, retain=True)
+        
+        # B. ALWAYS Kill the "Other" stream to enforce strict data savings.
+        #    (Removed the "if mode is not OFF" check)
+        print(f"Auto-Switching: Enforcing OFF for {instance_other}")
+        mqtt_client.publish(topic_other, "OFF", qos=1, retain=True)
+        
+        # Also ensure the local viewer for the other stream is disabled
+        other_cam = cameras.get(f"{cmd.camera_id}-{other_type}")
+        if other_cam:
+            other_cam.set_state(False)
+
+        return {"status": "success", "target": instance_target, "mode": cmd.mode}
     else:
-        print("Error: Cloud MQTT client is not connected.")
         return {"status": "error", "detail": "Cloud MQTT not connected"}
 
 @app.post("/api/upload/snapshot")

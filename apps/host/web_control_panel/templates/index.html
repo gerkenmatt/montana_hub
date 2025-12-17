@@ -138,11 +138,11 @@
             </div>
 
             <div class="mode-controls" id="ctrl-cam1">
-                <button class="mode-btn active-off" onclick="setStreamMode('cam1', 'OFF', this)">OFF</button>
-                <button class="mode-btn" onclick="setStreamMode('cam1', 'LOW', this)">SENTRY</button>
-                <button class="mode-btn" onclick="setStreamMode('cam1', 'MEDIUM', this)">1 FPS</button>
-                <button class="mode-btn" onclick="setStreamMode('cam1', 'HIGH', this)">LIVE</button>
-                <button class="mode-btn" onclick="triggerSnapshot('cam1', this)">📸 SNAP</button>
+                <button class="mode-btn active-off" data-mode="OFF" onclick="setStreamMode('cam1', 'OFF', this)">OFF</button>
+                <button class="mode-btn" data-mode="LOW" onclick="setStreamMode('cam1', 'LOW', this)">SENTRY</button>
+                <button class="mode-btn" data-mode="MEDIUM" onclick="setStreamMode('cam1', 'MEDIUM', this)">1 FPS</button>
+                <button class="mode-btn" data-mode="HIGH" onclick="setStreamMode('cam1', 'HIGH', this)">LIVE</button>
+                <button class="mode-btn" data-mode="SNAPSHOT" onclick="triggerSnapshot('cam1', this)">📸 SNAP</button>
             </div>
 
             <div id="status-camera1" class="status-box clear">Connecting...</div>
@@ -160,11 +160,11 @@
             </div>
 
             <div class="mode-controls" id="ctrl-cam2">
-                <button class="mode-btn active-off" onclick="setStreamMode('cam2', 'OFF', this)">OFF</button>
-                <button class="mode-btn" onclick="setStreamMode('cam2', 'LOW', this)">SENTRY</button>
-                <button class="mode-btn" onclick="setStreamMode('cam2', 'MEDIUM', this)">1 FPS</button>
-                <button class="mode-btn" onclick="setStreamMode('cam2', 'HIGH', this)">LIVE</button>
-                <button class="mode-btn" onclick="triggerSnapshot('cam2', this)">📸 SNAP</button>
+                <button class="mode-btn active-off" data-mode="OFF" onclick="setStreamMode('cam2', 'OFF', this)">OFF</button>
+                <button class="mode-btn" data-mode="LOW" onclick="setStreamMode('cam2', 'LOW', this)">SENTRY</button>
+                <button class="mode-btn" data-mode="MEDIUM" onclick="setStreamMode('cam2', 'MEDIUM', this)">1 FPS</button>
+                <button class="mode-btn" data-mode="HIGH" onclick="setStreamMode('cam2', 'HIGH', this)">LIVE</button>
+                <button class="mode-btn" data-mode="SNAPSHOT" onclick="triggerSnapshot('cam2', this)">📸 SNAP</button>
             </div>
 
             <div id="status-camera2" class="status-box clear">Connecting...</div>
@@ -200,11 +200,18 @@
     </div>
 
     <script>
-        // --- Date Helpers ---
+        // --- Date Helpers & Init ---
         const mqtt_client = new Paho.MQTT.Client(location.hostname, 9001, "web_" + new Date().getTime());
-    
-        // Track the Sentry Mode timer so we can stop it later
+        
+        // Track Sentry Timers
         let sentryInterval = null;
+
+        // --- STATE MEMORY ---
+        // Defaults both SD and HD to OFF.
+        const cameraStates = {
+            'cam1': { 'sd': 'OFF', 'hd': 'OFF' },
+            'cam2': { 'sd': 'OFF', 'hd': 'OFF' }
+        };
 
         function formatDate(date) { return date.toISOString().split('T')[0]; }
 
@@ -229,17 +236,30 @@
         }
 
         // --- Core Functions ---
+
         function setQuality(camId, quality, btnElement) {
             const img = document.getElementById(`vid-cam${camId}`);
-            img.src = `/feed/cam${camId}/${quality}?t=${new Date().getTime()}`;
-            img.setAttribute('data-quality', quality); // <--- Store current quality
             
+            // 1. Update UI immediately (Buttons)
+            img.setAttribute('data-quality', quality); 
             btnElement.parentElement.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
             btnElement.classList.add('active');
+
+            // 2. Retrieve the "Remembered" State for this quality
+            const savedMode = cameraStates[`cam${camId}`][quality];
+            console.log(`Switching ${camId} to ${quality.toUpperCase()}. Recalling Mode: ${savedMode}`);
+
+            // 3. Find the button corresponding to the saved mode using data-mode
+            const container = document.getElementById(`ctrl-cam${camId}`);
+            const targetBtn = container.querySelector(`.mode-btn[data-mode="${savedMode}"]`);
+
+            // 4. Trigger the Mode Switch (Restores previous state)
+            if (targetBtn) {
+                setStreamMode(`cam${camId}`, savedMode, targetBtn);
+            }
         }
 
         function setStreamMode(camId, mode, btnElement) {
-
             // 1. CLEAR EXISTING TIMER 
             if (sentryInterval) {
                 clearInterval(sentryInterval);
@@ -247,46 +267,60 @@
                 console.log("Sentry Loop Stopped");
             }
 
-            const quality = document.getElementById(`vid-${camId}`).getAttribute('data-quality') || 'sd';      
+            const quality = document.getElementById(`vid-${camId}`).getAttribute('data-quality') || 'sd';           
+            
+            // --- SAVE STATE ---
+            // Don't save SNAPSHOT as a permanent state
+            if (mode !== 'SNAPSHOT') {
+                cameraStates[camId][quality] = mode;
+            }
 
             // 2. Visual Feedback
             const container = document.getElementById(`ctrl-${camId}`);
-            container.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn'); // Reset all
+            container.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn'); 
             
-            // Set active class based on mode
             if(mode === 'OFF') btnElement.classList.add('active-off');
             else if(mode === 'LOW') {
                 btnElement.classList.add('active-sentry');
                 
                 // --- START SENTRY LOOP ---
-                console.log("Starting Sentry Loop (10s)...");
-                // Take one immediately
+                console.log("Starting Sentry Loop (60s)...");
                 triggerSnapshot(camId, btnElement); 
-                // Then take one every 10 seconds
                 sentryInterval = setInterval(() => {
                     triggerSnapshot(camId, btnElement);
-                }, 10000); 
+                }, 60000); 
                 // -------------------------
             }
             else btnElement.classList.add('active-live');
 
-            // 3. Reset Image Source if switching TO Live Video (Medium/High)
-            if (mode !== 'OFF' && mode !== 'LOW') {
+            // 3. Reset Image Source
+            // We update the source for LIVE (High/Med) AND OFF modes.
+            // We DO NOT touch it for SENTRY (Low) because that uses Base64 snapshots.
+            if (mode !== 'LOW' && mode !== 'SNAPSHOT') {
                 const img = document.getElementById(`vid-${camId}`);
-                img.src = ""; // Blink
+                
+                // Construct the new URL (e.g., /feed/cam1/hd)
+                const newSrc = `/feed/${camId}/${quality}?t=${new Date().getTime()}`;
+                
+                // Blink the image to force the browser to drop the old connection/buffer
+                img.src = ""; 
                 setTimeout(() => {
-                    img.src = `/feed/${camId}/${quality}?t=${new Date().getTime()}`;
+                    img.src = newSrc;
                 }, 100);
                 
                 // Reset status text
                 const status = document.getElementById(`status-camera${camId.replace('cam','')}`);
                 if(status) {
-                    status.innerText = "Connecting...";
-                    status.className = "status-box clear"; // Reset color
+                    if (mode === 'OFF') {
+                        status.innerText = "Standby";
+                        status.className = "status-box clear"; // Grey/Green
+                    } else {
+                        status.innerText = "Connecting...";
+                        status.className = "status-box clear";
+                    }
                 }
             }
-
-            // 3. Send API Request
+            // 4. Send API Request
             console.log(`Setting ${camId} (${quality}) to ${mode}`);
             fetch('/api/camera/control', {
                 method: 'POST',
@@ -296,10 +330,7 @@
                     stream_type: quality, 
                     mode: mode 
                 })
-            })
-            .then(r => r.json())
-            .then(data => console.log("Result:", data))
-            .catch(err => console.error("Error:", err));
+            });
         }
 
         function deleteEvent(cameraId, timestamp, cardElement) {
@@ -330,14 +361,11 @@
         }
 
         function triggerSnapshot(camId, btnElement) {
-            // Visual feedback on button
             btnElement.style.backgroundColor = "#fff";
             setTimeout(() => btnElement.style.backgroundColor = "", 100);
 
-            // 1. Get current quality to know which service to trigger
             const quality = document.getElementById(`vid-${camId}`).getAttribute('data-quality') || 'sd';
 
-            // 2. Send Command
             fetch('/api/camera/control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -348,7 +376,6 @@
                 })
             });
             
-            // 3. Visual cleanup (Turn off other modes visually)
             const container = document.getElementById(`ctrl-${camId}`);
             container.querySelectorAll('.mode-btn').forEach(b => b.className = 'mode-btn');
             btnElement.classList.add('active-sentry');
@@ -368,7 +395,6 @@
             .catch(e => { console.error(e); c.innerHTML='<p style="color:red">Failed to load history.</p>'; });
         }
 
-        // --- Main Load ---
         document.addEventListener("DOMContentLoaded", function() {
             filterHistory('all');
             
@@ -376,7 +402,6 @@
             ws.onmessage = (e) => {
                 const data = JSON.parse(e.data);
                 
-                // 1. Handle Telemetry
                 if (data.type === 'telemetry' && data.telemetry) {
                     document.getElementById('stat-cpu').innerText = data.telemetry.cpu;
                     document.getElementById('stat-ram').innerText = data.telemetry.ram;
@@ -391,7 +416,6 @@
                     if (data.telemetry.net_rate !== undefined) document.getElementById('stat-rate').innerText = data.telemetry.net_rate;
                 }
 
-                // 2. Handle Detection
                 if (data.type === 'detection') {
                     const el = document.getElementById(`status-${data.camera_id}`);
                     if(el) {
@@ -404,21 +428,22 @@
                     }
                 }
 
-                // 3. Handle Snapshot (RAM Passthrough)
                 if (data.type === 'snapshot') {
-                    // Update the image source with the Base64 data
                     const img = document.getElementById(`vid-${data.camera_id}`);
                     if (img) {
                         img.src = "data:image/jpeg;base64," + data.image;
-                        
-                        // Optional: Flash effect to show update happened
                         img.style.opacity = 0.5;
                         setTimeout(() => img.style.opacity = 1, 100);
                         
+                        const status = document.getElementById(`status-camera${data.camera_id.replace('cam','')}`);
+                        if(status) {
+                            status.innerText = "SNAPSHOT UPDATED";
+                            status.className = "status-box clear";
+                        }
                     }
                 }
             };
-
+            
             const emailT = document.getElementById('email-toggle');
             if(emailT) emailT.addEventListener('change', function() {
                 fetch('/api/settings/email', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:this.checked})});

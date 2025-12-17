@@ -324,9 +324,9 @@ def main():
             for cam in config['cameras']:
                 # --- TROUBLESHOOTING ISOLATION ---
                 # Only allow camera 2 to start. Ignore everything else.
-                if cam['id'] != "camera2":
-                    print(f"INFO: Skipping {cam['id']} for troubleshooting.")
-                    continue
+                # if cam['id'] != "camera2":
+                #     print(f"INFO: Skipping {cam['id']} for troubleshooting.")
+                #     continue
 
                 t = Thread(target=camera_worker, args=(detector, infer_pipeline, client, cam, config))
                 t.daemon = True
